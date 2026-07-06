@@ -1,18 +1,20 @@
 import "dotenv/config";
-import { PrismaBetterSqlite3 } from "@prisma/adapter-better-sqlite3";
+import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "../src/generated/prisma/client";
+import { Pool } from "pg";
 
-const url = process.env.DATABASE_URL ?? "file:./data/mega.db";
+const url = process.env.DATABASE_URL;
 
 async function main() {
-  if (!url.startsWith("file:")) {
-    console.log("PostgreSQL détecté :", url.replace(/:[^:@]+@/, ":****@"));
-    console.log("Utilisez psql ou un client SQL pour inspecter les tables.");
-    return;
+  if (!url) {
+    console.error("DATABASE_URL manquant.");
+    process.exit(1);
   }
 
-  const adapter = new PrismaBetterSqlite3({ url });
-  const db = new PrismaClient({ adapter });
+  console.log("PostgreSQL :", url.replace(/:[^:@]+@/, ":****@"));
+
+  const pool = new Pool({ connectionString: url });
+  const db = new PrismaClient({ adapter: new PrismaPg(pool) });
 
   const [
     categories,
@@ -41,8 +43,6 @@ async function main() {
   console.log("\n╔══════════════════════════════════════════╗");
   console.log("║   MEGA SN SARL · État de la base         ║");
   console.log("╚══════════════════════════════════════════╝\n");
-  console.log("Fichier :", url);
-  console.log("");
 
   if (parametre) {
     console.log(`Entreprise  : ${parametre.entreprise}`);

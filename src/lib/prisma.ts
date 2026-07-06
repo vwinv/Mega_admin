@@ -1,25 +1,23 @@
 import "dotenv/config";
-import { PrismaBetterSqlite3 } from "@prisma/adapter-better-sqlite3";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "@/generated/prisma/client";
 import { Pool } from "pg";
 
 const globalForPrisma = globalThis as unknown as { prisma: PrismaClient };
 
-function isPostgresUrl(url: string): boolean {
-  return url.startsWith("postgresql://") || url.startsWith("postgres://");
+function getDatabaseUrl(): string {
+  const url = process.env.DATABASE_URL;
+  if (!url) {
+    throw new Error(
+      "DATABASE_URL manquant. Configurez une base PostgreSQL (Vercel : Settings → Environment Variables)."
+    );
+  }
+  return url;
 }
 
 function createPrismaClient() {
-  const url = process.env.DATABASE_URL ?? "file:./data/mega.db";
-
-  if (isPostgresUrl(url)) {
-    const pool = new Pool({ connectionString: url });
-    const adapter = new PrismaPg(pool);
-    return new PrismaClient({ adapter });
-  }
-
-  const adapter = new PrismaBetterSqlite3({ url });
+  const pool = new Pool({ connectionString: getDatabaseUrl() });
+  const adapter = new PrismaPg(pool);
   return new PrismaClient({ adapter });
 }
 
@@ -29,7 +27,6 @@ if (process.env.NODE_ENV !== "production") {
   globalForPrisma.prisma = prisma;
 }
 
-export function getDatabaseKind(): "sqlite" | "postgresql" {
-  const url = process.env.DATABASE_URL ?? "file:./data/mega.db";
-  return isPostgresUrl(url) ? "postgresql" : "sqlite";
+export function getDatabaseKind(): "postgresql" {
+  return "postgresql";
 }
