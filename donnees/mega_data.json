@@ -1,0 +1,775 @@
+{
+ "entreprise": "MEGA SN SARL",
+ "devise": "FCFA",
+ "annee": 2026,
+ "soldes_initiaux": {
+  "banque": 2743910,
+  "caisse": 150000
+ },
+ "plan_comptable": [
+  {
+   "categorie": "Ventes de marchandises",
+   "code": "701",
+   "intitule": "Ventes de marchandises",
+   "sens": "entree"
+  },
+  {
+   "categorie": "Prestations de services",
+   "code": "706",
+   "intitule": "Services vendus",
+   "sens": "entree"
+  },
+  {
+   "categorie": "Apports des associés",
+   "code": "101",
+   "intitule": "Capital social — apports",
+   "sens": "entree"
+  },
+  {
+   "categorie": "Subventions",
+   "code": "71",
+   "intitule": "Subventions d’exploitation",
+   "sens": "entree"
+  },
+  {
+   "categorie": "Remboursements reçus",
+   "code": "4711",
+   "intitule": "Débiteurs divers — remboursements reçus",
+   "sens": "entree"
+  },
+  {
+   "categorie": "Produits financiers",
+   "code": "771",
+   "intitule": "Intérêts et revenus financiers",
+   "sens": "entree"
+  },
+  {
+   "categorie": "Approvisionnement de caisse (depuis banque)",
+   "code": "585",
+   "intitule": "Virements de fonds (mouvement interne)",
+   "sens": "entree"
+  },
+  {
+   "categorie": "Autres recettes",
+   "code": "758",
+   "intitule": "Produits divers",
+   "sens": "entree"
+  },
+  {
+   "categorie": "Achats de marchandises",
+   "code": "601",
+   "intitule": "Achats de marchandises",
+   "sens": "sortie"
+  },
+  {
+   "categorie": "Salaires et rémunérations",
+   "code": "661",
+   "intitule": "Rémunérations directes du personnel",
+   "sens": "sortie"
+  },
+  {
+   "categorie": "Charges sociales (IPRES/CSS)",
+   "code": "664",
+   "intitule": "Charges sociales",
+   "sens": "sortie"
+  },
+  {
+   "categorie": "Impôts et taxes",
+   "code": "641",
+   "intitule": "Impôts et taxes directs",
+   "sens": "sortie"
+  },
+  {
+   "categorie": "Loyer",
+   "code": "622",
+   "intitule": "Locations et charges locatives",
+   "sens": "sortie"
+  },
+  {
+   "categorie": "Électricité et eau",
+   "code": "605",
+   "intitule": "Fournitures non stockables (eau, énergie)",
+   "sens": "sortie"
+  },
+  {
+   "categorie": "Internet et téléphone",
+   "code": "628",
+   "intitule": "Frais de télécommunications",
+   "sens": "sortie"
+  },
+  {
+   "categorie": "Carburant et transport",
+   "code": "618",
+   "intitule": "Autres frais de transport",
+   "sens": "sortie"
+  },
+  {
+   "categorie": "Fournitures de bureau",
+   "code": "6055",
+   "intitule": "Fournitures de bureau",
+   "sens": "sortie"
+  },
+  {
+   "categorie": "Entretien et réparations",
+   "code": "624",
+   "intitule": "Entretien, réparations et maintenance",
+   "sens": "sortie"
+  },
+  {
+   "categorie": "Honoraires (comptable, avocat…)",
+   "code": "632",
+   "intitule": "Rémunérations d’intermédiaires et de conseils",
+   "sens": "sortie"
+  },
+  {
+   "categorie": "Marketing et communication",
+   "code": "627",
+   "intitule": "Publicité, publications, relations publiques",
+   "sens": "sortie"
+  },
+  {
+   "categorie": "Frais bancaires",
+   "code": "631",
+   "intitule": "Frais bancaires",
+   "sens": "sortie"
+  },
+  {
+   "categorie": "Missions et déplacements",
+   "code": "638",
+   "intitule": "Autres charges externes (missions, réceptions)",
+   "sens": "sortie"
+  },
+  {
+   "categorie": "Équipements",
+   "code": "244",
+   "intitule": "Matériel et mobilier (immobilisations)",
+   "sens": "sortie"
+  },
+  {
+   "categorie": "Transfert vers petite caisse",
+   "code": "585",
+   "intitule": "Virements de fonds (mouvement interne)",
+   "sens": "sortie"
+  },
+  {
+   "categorie": "Autres dépenses",
+   "code": "658",
+   "intitule": "Charges diverses",
+   "sens": "sortie"
+  },
+  {
+   "categorie": "Frais divers",
+   "code": "6581",
+   "intitule": "Frais divers",
+   "sens": "sortie"
+  },
+  {
+   "categorie": "Abonnements",
+   "code": "628",
+   "intitule": "Frais de télécommunications / services en ligne",
+   "sens": "sortie"
+  },
+  {
+   "categorie": "Remboursement",
+   "code": "462",
+   "intitule": "Associés, comptes courants — remboursements",
+   "sens": "sortie"
+  },
+  {
+   "categorie": "Prêt",
+   "code": "274",
+   "intitule": "Prêts et créances accordés",
+   "sens": "sortie"
+  }
+ ],
+ "codes_budgetaires": [
+  {
+   "code": "BUD-AMINA",
+   "beneficiaire": "Amina — enveloppe individuelle",
+   "enveloppe": 0
+  },
+  {
+   "code": "BUD-NIELLE",
+   "beneficiaire": "Nielle — enveloppe individuelle",
+   "enveloppe": 0
+  },
+  {
+   "code": "BUD-MESERIGNE",
+   "beneficiaire": "Meserigne — enveloppe individuelle",
+   "enveloppe": 0
+  },
+  {
+   "code": "BUD-FATIMA",
+   "beneficiaire": "Fatima Cissé — enveloppe individuelle",
+   "enveloppe": 0
+  },
+  {
+   "code": "BUD-FONCT",
+   "beneficiaire": "Fonctionnement général (frais, impôts, administratif)",
+   "enveloppe": 0
+  },
+  {
+   "code": "BUD-EQUIP",
+   "beneficiaire": "Équipements & investissements",
+   "enveloppe": 0
+  },
+  {
+   "code": "BUD-PROJET1",
+   "beneficiaire": "Projet / client 1 (à renommer)",
+   "enveloppe": 0
+  }
+ ],
+ "modes_paiement": [
+  "Virement",
+  "Chèque",
+  "Carte bancaire",
+  "Mobile Money",
+  "Cash"
+ ],
+ "statuts": [
+  "Payé",
+  "En attente",
+  "En retard"
+ ],
+ "journal": [
+  {
+   "date": "2026-05-29",
+   "piece": null,
+   "libelle": "Petite Caise du mois de Juin",
+   "categorie": "Transfert vers petite caisse",
+   "code_compte": "585",
+   "code_budgetaire": null,
+   "mode": "Mobile Money",
+   "entree": null,
+   "sortie": 200000,
+   "observations": null
+  },
+  {
+   "date": "2026-05-29",
+   "piece": null,
+   "libelle": "Remboursement Meserigne",
+   "categorie": "Autres dépenses",
+   "code_compte": "658",
+   "code_budgetaire": "BUD-FONCT",
+   "mode": "Cash",
+   "entree": null,
+   "sortie": 1300000,
+   "observations": null
+  },
+  {
+   "date": "2026-05-29",
+   "piece": null,
+   "libelle": "Salaire Amina",
+   "categorie": "Salaires et rémunérations",
+   "code_compte": "661",
+   "code_budgetaire": "BUD-AMINA",
+   "mode": "Cash",
+   "entree": null,
+   "sortie": 250000,
+   "observations": null
+  },
+  {
+   "date": "2026-05-31",
+   "piece": null,
+   "libelle": "Salaire Nielle",
+   "categorie": "Salaires et rémunérations",
+   "code_compte": "661",
+   "code_budgetaire": "BUD-NIELLE",
+   "mode": "Cash",
+   "entree": null,
+   "sortie": 150000,
+   "observations": null
+  },
+  {
+   "date": null,
+   "piece": null,
+   "libelle": "Frais notaire",
+   "categorie": "Honoraires (comptable, avocat…)",
+   "code_compte": "632",
+   "code_budgetaire": "BUD-FONCT",
+   "mode": "Chèque",
+   "entree": null,
+   "sortie": 256090,
+   "observations": null
+  },
+  {
+   "date": "2026-06-08",
+   "piece": null,
+   "libelle": "Inscription CNSL",
+   "categorie": "Autres dépenses",
+   "code_compte": "658",
+   "code_budgetaire": "BUD-FONCT",
+   "mode": "Virement",
+   "entree": null,
+   "sortie": 177000,
+   "observations": null
+  },
+  {
+   "date": "2026-06-02",
+   "piece": null,
+   "libelle": "Retenue CBAO",
+   "categorie": "Frais bancaires",
+   "code_compte": "631",
+   "code_budgetaire": "BUD-FONCT",
+   "mode": null,
+   "entree": null,
+   "sortie": 50000,
+   "observations": null
+  },
+  {
+   "date": "2026-06-08",
+   "piece": null,
+   "libelle": "fond appui du virement",
+   "categorie": "Frais bancaires",
+   "code_compte": "631",
+   "code_budgetaire": "BUD-FONCT",
+   "mode": null,
+   "entree": null,
+   "sortie": 4680,
+   "observations": null
+  },
+  {
+   "date": "2026-06-10",
+   "piece": null,
+   "libelle": "taxe sur chequier",
+   "categorie": "Frais bancaires",
+   "code_compte": "631",
+   "code_budgetaire": "BUD-FONCT",
+   "mode": null,
+   "entree": null,
+   "sortie": 1250,
+   "observations": null
+  },
+  {
+   "date": null,
+   "piece": null,
+   "libelle": "Paiement 2e tranche : commonwealth ",
+   "categorie": "Prestations de services",
+   "code_compte": "706",
+   "code_budgetaire": null,
+   "mode": null,
+   "entree": 1000000,
+   "sortie": null,
+   "observations": null
+  },
+  {
+   "date": "2026-06-29",
+   "piece": null,
+   "libelle": "Salaire Fatima Cisse",
+   "categorie": "Salaires et rémunérations",
+   "code_compte": "661",
+   "code_budgetaire": "BUD-FATIMA",
+   "mode": "Virement",
+   "entree": null,
+   "sortie": 100000,
+   "observations": null
+  },
+  {
+   "date": "2026-06-29",
+   "piece": null,
+   "libelle": "Salaire Amina",
+   "categorie": "Salaires et rémunérations",
+   "code_compte": "661",
+   "code_budgetaire": "BUD-AMINA",
+   "mode": "Virement",
+   "entree": null,
+   "sortie": 250000,
+   "observations": null
+  },
+  {
+   "date": "2026-06-29",
+   "piece": null,
+   "libelle": "Salaire Nielle",
+   "categorie": "Salaires et rémunérations",
+   "code_compte": "661",
+   "code_budgetaire": "BUD-NIELLE",
+   "mode": "Virement",
+   "entree": null,
+   "sortie": 150000,
+   "observations": null
+  },
+  {
+   "date": "2026-06-29",
+   "piece": null,
+   "libelle": "Frais telecom BCEAO",
+   "categorie": "Frais bancaires",
+   "code_compte": "631",
+   "code_budgetaire": "BUD-FONCT",
+   "mode": null,
+   "entree": null,
+   "sortie": 100,
+   "observations": null
+  },
+  {
+   "date": "2026-06-29",
+   "piece": null,
+   "libelle": "Frais telecom BCEAO",
+   "categorie": "Frais bancaires",
+   "code_compte": "631",
+   "code_budgetaire": "BUD-FONCT",
+   "mode": null,
+   "entree": null,
+   "sortie": 100,
+   "observations": null
+  },
+  {
+   "date": "2026-06-29",
+   "piece": null,
+   "libelle": "Pai depuis visa com étranger",
+   "categorie": "Frais bancaires",
+   "code_compte": "631",
+   "code_budgetaire": "BUD-FONCT",
+   "mode": null,
+   "entree": null,
+   "sortie": 573,
+   "observations": null
+  },
+  {
+   "date": "2026-06-29",
+   "piece": null,
+   "libelle": "Pai depuis visa com étranger",
+   "categorie": "Frais bancaires",
+   "code_compte": "631",
+   "code_budgetaire": "BUD-FONCT",
+   "mode": null,
+   "entree": null,
+   "sortie": 573,
+   "observations": null
+  },
+  {
+   "date": "2026-06-29",
+   "piece": null,
+   "libelle": "Paiement google workspace depuis la carte",
+   "categorie": "Internet et téléphone",
+   "code_compte": "628",
+   "code_budgetaire": "BUD-FONCT",
+   "mode": "Carte bancaire",
+   "entree": null,
+   "sortie": 14562,
+   "observations": null
+  },
+  {
+   "date": "2026-06-29",
+   "piece": null,
+   "libelle": "Paiement google workspace depuis la carte",
+   "categorie": "Internet et téléphone",
+   "code_compte": "628",
+   "code_budgetaire": "BUD-FONCT",
+   "mode": "Carte bancaire",
+   "entree": null,
+   "sortie": 14562,
+   "observations": null
+  },
+  {
+   "date": "2026-06-30",
+   "piece": null,
+   "libelle": "Taxe tta trx du 28 06 2026",
+   "categorie": "Frais bancaires",
+   "code_compte": "631",
+   "code_budgetaire": "BUD-FONCT",
+   "mode": null,
+   "entree": null,
+   "sortie": 73,
+   "observations": null
+  },
+  {
+   "date": "2026-06-30",
+   "piece": null,
+   "libelle": "Taxe tta trx du 28 06 2026",
+   "categorie": "Frais bancaires",
+   "code_compte": "631",
+   "code_budgetaire": "BUD-FONCT",
+   "mode": null,
+   "entree": null,
+   "sortie": 73,
+   "observations": null
+  },
+  {
+   "date": "2026-06-30",
+   "piece": null,
+   "libelle": "Facturation TPE",
+   "categorie": "Frais bancaires",
+   "code_compte": "631",
+   "code_budgetaire": "BUD-FONCT",
+   "mode": null,
+   "entree": null,
+   "sortie": 10000,
+   "observations": null
+  },
+  {
+   "date": "2026-07-01",
+   "piece": null,
+   "libelle": "Virement reçu de Meserigne",
+   "categorie": "Autres recettes",
+   "code_compte": "758",
+   "code_budgetaire": "BUD-MESERIGNE",
+   "mode": "Virement",
+   "entree": 2500000,
+   "sortie": null,
+   "observations": null
+  },
+  {
+   "date": "2026-07-02",
+   "piece": null,
+   "libelle": "Pai depuis visa com étranger",
+   "categorie": "Frais bancaires",
+   "code_compte": "631",
+   "code_budgetaire": "BUD-FONCT",
+   "mode": null,
+   "entree": null,
+   "sortie": 525,
+   "observations": null
+  },
+  {
+   "date": "2026-07-02",
+   "piece": null,
+   "libelle": "Paiement google workspace depuis la carte",
+   "categorie": "Internet et téléphone",
+   "code_compte": "628",
+   "code_budgetaire": "BUD-FONCT",
+   "mode": null,
+   "entree": null,
+   "sortie": 5084,
+   "observations": null
+  },
+  {
+   "date": "2026-07-03",
+   "piece": null,
+   "libelle": "Taxe tta trx du 01 07 2026",
+   "categorie": "Frais bancaires",
+   "code_compte": "631",
+   "code_budgetaire": "BUD-FONCT",
+   "mode": null,
+   "entree": null,
+   "sortie": 25,
+   "observations": null
+  },
+  {
+   "date": "2026-07-06",
+   "piece": null,
+   "libelle": "Retrait Gab pour remboursement Meserigne ",
+   "categorie": "Autres dépenses",
+   "code_compte": "658",
+   "code_budgetaire": "BUD-FONCT",
+   "mode": "Carte bancaire",
+   "entree": null,
+   "sortie": 250000,
+   "observations": null
+  },
+  {
+   "date": "2026-07-06",
+   "piece": null,
+   "libelle": "Frais retrait gab",
+   "categorie": "Frais bancaires",
+   "code_compte": "631",
+   "code_budgetaire": "BUD-FONCT",
+   "mode": null,
+   "entree": null,
+   "sortie": 500,
+   "observations": null
+  },
+  {
+   "date": "2026-07-06",
+   "piece": null,
+   "libelle": "Retrait Gab pour remboursement Meserigne ",
+   "categorie": "Autres dépenses",
+   "code_compte": "658",
+   "code_budgetaire": "BUD-FONCT",
+   "mode": "Carte bancaire",
+   "entree": null,
+   "sortie": 250000,
+   "observations": null
+  },
+  {
+   "date": "2026-07-06",
+   "piece": null,
+   "libelle": "Frais retrait gab",
+   "categorie": "Frais bancaires",
+   "code_compte": "631",
+   "code_budgetaire": "BUD-FONCT",
+   "mode": null,
+   "entree": null,
+   "sortie": 500,
+   "observations": null
+  },
+  {
+   "date": "2026-07-03",
+   "piece": null,
+   "libelle": "Paiement CEL (Contribution Économique Locale) - chèque déposé",
+   "categorie": "Impôts et taxes",
+   "code_compte": "641",
+   "code_budgetaire": null,
+   "mode": "Chèque",
+   "entree": null,
+   "sortie": null,
+   "observations": null
+  }
+ ],
+ "petite_caisse": [
+  {
+   "date": "2026-02-27",
+   "piece": null,
+   "motif": "Paiement Cursor Amina",
+   "categorie": "Internet et téléphone",
+   "code_compte": "628",
+   "code_budgetaire": "BUD-AMINA",
+   "entree": null,
+   "sortie": 11875
+  },
+  {
+   "date": "2026-03-06",
+   "piece": null,
+   "motif": "Paiement Cursor Amina",
+   "categorie": "Internet et téléphone",
+   "code_compte": "628",
+   "code_budgetaire": "BUD-AMINA",
+   "entree": null,
+   "sortie": 1535
+  },
+  {
+   "date": "2026-03-06",
+   "piece": null,
+   "motif": "Paiement Cursor Amina",
+   "categorie": "Internet et téléphone",
+   "code_compte": "628",
+   "code_budgetaire": "BUD-AMINA",
+   "entree": null,
+   "sortie": 11875
+  },
+  {
+   "date": "2026-04-02",
+   "piece": null,
+   "motif": "Paiement claude code Meserigne",
+   "categorie": "Internet et téléphone",
+   "code_compte": "628",
+   "code_budgetaire": "BUD-MESERIGNE",
+   "entree": null,
+   "sortie": 11900
+  },
+  {
+   "date": "2026-04-16",
+   "piece": null,
+   "motif": "Paiement Claude pour Nielle",
+   "categorie": "Internet et téléphone",
+   "code_compte": "628",
+   "code_budgetaire": "BUD-NIELLE",
+   "entree": null,
+   "sortie": 11900
+  },
+  {
+   "date": "2026-05-11",
+   "piece": null,
+   "motif": "Paiement Cursor Amina",
+   "categorie": "Internet et téléphone",
+   "code_compte": "628",
+   "code_budgetaire": "BUD-AMINA",
+   "entree": null,
+   "sortie": 11875
+  },
+  {
+   "date": "2026-05-20",
+   "piece": null,
+   "motif": "Paiement Claude pour Nielle",
+   "categorie": "Internet et téléphone",
+   "code_compte": "628",
+   "code_budgetaire": "BUD-NIELLE",
+   "entree": null,
+   "sortie": 12225
+  },
+  {
+   "date": "2026-05-29",
+   "piece": null,
+   "motif": "Approvisionnement petite Caisse",
+   "categorie": "Approvisionnement de caisse (depuis banque)",
+   "code_compte": "585",
+   "code_budgetaire": null,
+   "entree": 200000,
+   "sortie": null
+  },
+  {
+   "date": "2026-06-01",
+   "piece": null,
+   "motif": "Paiement claude code Meserigne",
+   "categorie": "Internet et téléphone",
+   "code_compte": "628",
+   "code_budgetaire": "BUD-MESERIGNE",
+   "entree": null,
+   "sortie": 12191
+  },
+  {
+   "date": "2026-06-11",
+   "piece": null,
+   "motif": "Paiement Cursor Amina",
+   "categorie": "Internet et téléphone",
+   "code_compte": "628",
+   "code_budgetaire": "BUD-AMINA",
+   "entree": null,
+   "sortie": 11875
+  },
+  {
+   "date": "2026-06-21",
+   "piece": null,
+   "motif": "Paiment Claude pour Nielle",
+   "categorie": "Internet et téléphone",
+   "code_compte": "628",
+   "code_budgetaire": "BUD-NIELLE",
+   "entree": null,
+   "sortie": 12411
+  }
+ ],
+ "budget_previsionnel": [
+  { "categorie": "Prestations de services", "mois": 2, "montant": 750000 },
+  { "categorie": "Prestations de services", "mois": 3, "montant": 500000 },
+  { "categorie": "Prestations de services", "mois": 7, "montant": 1000000 },
+  { "categorie": "Prestations de services", "mois": 8, "montant": 750000 },
+  { "categorie": "Prestations de services", "mois": 9, "montant": 750000 },
+  { "categorie": "Prestations de services", "mois": 10, "montant": 750000 },
+  { "categorie": "Prestations de services", "mois": 11, "montant": 750000 },
+  { "categorie": "Prestations de services", "mois": 12, "montant": 750000 },
+  { "categorie": "Salaires et rémunérations", "mois": 5, "montant": 250000 },
+  { "categorie": "Salaires et rémunérations", "mois": 6, "montant": 500000 },
+  { "categorie": "Salaires et rémunérations", "mois": 7, "montant": 500000 },
+  { "categorie": "Salaires et rémunérations", "mois": 8, "montant": 500000 },
+  { "categorie": "Salaires et rémunérations", "mois": 9, "montant": 500000 },
+  { "categorie": "Salaires et rémunérations", "mois": 10, "montant": 500000 },
+  { "categorie": "Salaires et rémunérations", "mois": 11, "montant": 500000 },
+  { "categorie": "Salaires et rémunérations", "mois": 12, "montant": 500000 },
+  { "categorie": "Internet et téléphone", "mois": 2, "montant": 11875 },
+  { "categorie": "Internet et téléphone", "mois": 3, "montant": 13410 },
+  { "categorie": "Internet et téléphone", "mois": 4, "montant": 23800 },
+  { "categorie": "Internet et téléphone", "mois": 5, "montant": 24100 },
+  { "categorie": "Internet et téléphone", "mois": 6, "montant": 60000 },
+  { "categorie": "Internet et téléphone", "mois": 7, "montant": 60000 },
+  { "categorie": "Internet et téléphone", "mois": 8, "montant": 60000 },
+  { "categorie": "Internet et téléphone", "mois": 9, "montant": 60000 },
+  { "categorie": "Internet et téléphone", "mois": 10, "montant": 60000 },
+  { "categorie": "Internet et téléphone", "mois": 11, "montant": 60000 },
+  { "categorie": "Internet et téléphone", "mois": 12, "montant": 60000 },
+  { "categorie": "Fournitures de bureau", "mois": 4, "montant": 10000 },
+  { "categorie": "Fournitures de bureau", "mois": 7, "montant": 10000 },
+  { "categorie": "Fournitures de bureau", "mois": 8, "montant": 10000 },
+  { "categorie": "Fournitures de bureau", "mois": 9, "montant": 10000 },
+  { "categorie": "Fournitures de bureau", "mois": 10, "montant": 10000 },
+  { "categorie": "Fournitures de bureau", "mois": 11, "montant": 10000 },
+  { "categorie": "Fournitures de bureau", "mois": 12, "montant": 10000 },
+  { "categorie": "Honoraires (comptable, avocat…)", "mois": 7, "montant": 256090 },
+  { "categorie": "Frais bancaires", "mois": 6, "montant": 67422 },
+  { "categorie": "Frais bancaires", "mois": 7, "montant": 15000 },
+  { "categorie": "Frais bancaires", "mois": 8, "montant": 15000 },
+  { "categorie": "Frais bancaires", "mois": 9, "montant": 15000 },
+  { "categorie": "Frais bancaires", "mois": 10, "montant": 15000 },
+  { "categorie": "Frais bancaires", "mois": 11, "montant": 15000 },
+  { "categorie": "Frais bancaires", "mois": 12, "montant": 15000 },
+  { "categorie": "Équipements", "mois": 1, "montant": 730000 },
+  { "categorie": "Équipements", "mois": 2, "montant": 600000 },
+  { "categorie": "Transfert vers petite caisse", "mois": 5, "montant": 200000 },
+  { "categorie": "Transfert vers petite caisse", "mois": 7, "montant": 200000 },
+  { "categorie": "Transfert vers petite caisse", "mois": 8, "montant": 200000 },
+  { "categorie": "Transfert vers petite caisse", "mois": 9, "montant": 200000 },
+  { "categorie": "Transfert vers petite caisse", "mois": 10, "montant": 200000 },
+  { "categorie": "Transfert vers petite caisse", "mois": 11, "montant": 200000 },
+  { "categorie": "Transfert vers petite caisse", "mois": 12, "montant": 200000 },
+  { "categorie": "Autres dépenses", "mois": 2, "montant": 9100 },
+  { "categorie": "Autres dépenses", "mois": 6, "montant": 177000 }
+ ]
+}
