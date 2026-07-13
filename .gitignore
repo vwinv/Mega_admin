@@ -1,8 +1,6 @@
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
-
-# dependencies
-/node_modules
-/.pnp
+# Dependencies
+node_modules/
+.pnp
 .pnp.*
 .yarn/*
 !.yarn/patches
@@ -10,46 +8,64 @@
 !.yarn/releases
 !.yarn/versions
 
-# testing
-/coverage
+# Next.js
+.next/
+out/
 
-# next.js
-/.next/
-/out/
+# Build
+build/
+dist/
+*.tsbuildinfo
 
-# production
-/build
+# Tests
+coverage/
 
-# misc
-.DS_Store
-*.pem
+# Environment variables
+.env
+.env.*
+!.env.example
 
-# debug
+# Logs
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-.pnpm-debug.log*
+pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
-.env
-.env.local
-.env.*.local
-!.env.example
+# OS
+.DS_Store
+Thumbs.db
 
-# database files (données locales — ne pas versionner)
-/data/*.db
-/data/*.db-journal
-/data/backups/
-/data/archives/
-/dumps/
-/prisma/*.db
-/prisma/*.db-journal
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
 
-# vercel
+# Vercel
 .vercel
 
-# typescript
-*.tsbuildinfo
-next-env.d.ts
+# Prisma (généré via postinstall)
+src/generated/prisma/
 
-/src/generated/prisma
+# Base de données locale
+data/*.db
+data/backups/
+data/archives/**
+!data/.gitkeep
+!data/archives/.gitkeep
+
+# Cache
+.turbo/
+.cache/
+
+# Render
+.render/
+
+# Local database / archives
+data/*.db
+data/*.db-journal
+data/backups/
+data/archives/
+dumps/
+prisma/*.db
+prisma/*.db-journal

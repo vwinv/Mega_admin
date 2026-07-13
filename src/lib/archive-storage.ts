@@ -2,7 +2,13 @@ import { mkdir, unlink, writeFile } from "fs/promises";
 import path from "path";
 import { randomUUID } from "crypto";
 
-const ARCHIVES_ROOT = path.join(process.cwd(), "data", "archives");
+/** Sur Render : monter un Persistent Disk et définir ARCHIVES_DIR=/var/data/archives */
+function getArchivesRoot(): string {
+  const fromEnv = process.env.ARCHIVES_DIR?.trim();
+  if (fromEnv) return path.resolve(fromEnv);
+  return path.join(process.cwd(), "data", "archives");
+}
+
 const MAX_BYTES = 15 * 1024 * 1024;
 
 const ALLOWED_EXT = new Set([
@@ -34,8 +40,9 @@ const MIME_BY_EXT: Record<string, string> = {
 };
 
 export function resolveArchivePath(cheminStockage: string): string {
-  const resolved = path.resolve(ARCHIVES_ROOT, cheminStockage);
-  if (!resolved.startsWith(path.resolve(ARCHIVES_ROOT))) {
+  const root = getArchivesRoot();
+  const resolved = path.resolve(root, cheminStockage);
+  if (!resolved.startsWith(path.resolve(root))) {
     throw new Error("Chemin de fichier invalide.");
   }
   return resolved;
@@ -59,7 +66,7 @@ export async function saveArchiveFile(
 
   const safeName = `${randomUUID()}${ext}`;
   const relativeDir = subdir.replace(/\\/g, "/").replace(/^\/+/, "");
-  const dir = path.join(ARCHIVES_ROOT, relativeDir);
+  const dir = path.join(getArchivesRoot(), relativeDir);
   await mkdir(dir, { recursive: true });
 
   const buffer = Buffer.from(await file.arrayBuffer());
