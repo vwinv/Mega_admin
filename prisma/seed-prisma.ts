@@ -7,7 +7,11 @@ function buildPoolConfig(connectionString: string): PoolConfig {
   const needsSsl =
     process.env.DATABASE_SSL === "true" ||
     /sslmode=require/i.test(connectionString) ||
-    /\.render\.com/i.test(connectionString);
+    /\.render\.com/i.test(connectionString) ||
+    /\.neon\.tech/i.test(connectionString) ||
+    /\.supabase\.co/i.test(connectionString) ||
+    /\.vercel-storage\.com/i.test(connectionString) ||
+    /\.prisma\.io/i.test(connectionString);
 
   return {
     connectionString,

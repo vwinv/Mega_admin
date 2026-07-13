@@ -11,7 +11,7 @@ function getDatabaseUrl(): string {
   const url = process.env.DATABASE_URL;
   if (!url) {
     throw new Error(
-      "DATABASE_URL manquant. Configurez une base PostgreSQL (Render : Environment → DATABASE_URL).",
+      "DATABASE_URL manquant. Configurez une base PostgreSQL (Vercel : Settings → Environment Variables).",
     );
   }
   return url;
@@ -21,7 +21,11 @@ function buildPoolConfig(connectionString: string): PoolConfig {
   const needsSsl =
     process.env.DATABASE_SSL === "true" ||
     /sslmode=require/i.test(connectionString) ||
-    /\.render\.com/i.test(connectionString);
+    /\.render\.com/i.test(connectionString) ||
+    /\.neon\.tech/i.test(connectionString) ||
+    /\.supabase\.co/i.test(connectionString) ||
+    /\.vercel-storage\.com/i.test(connectionString) ||
+    /\.prisma\.io/i.test(connectionString);
 
   return {
     connectionString,
@@ -38,7 +42,7 @@ function getPrismaClient(): PrismaClient {
   if (globalForPrisma.prisma) return globalForPrisma.prisma;
 
   const client = createPrismaClient();
-  // Toujours cacher en prod Render (instances serverless / hot reload limité)
+  // Cache le client (dev + prod serverless Vercel)
   globalForPrisma.prisma = client;
   return client;
 }
