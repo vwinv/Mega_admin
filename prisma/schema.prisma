@@ -57,9 +57,13 @@ model Operation {
   categorie        Categorie       @relation(fields: [categorieId], references: [id])
   codeBudgetaireId String?
   codeBudgetaire   CodeBudgetaire? @relation(fields: [codeBudgetaireId], references: [id])
+  factureId        String?
+  facture          Facture?        @relation(fields: [factureId], references: [id], onDelete: SetNull)
   modePaiement     String?
   entree           Int?
   sortie           Int?
+  /** 0 = hors TVA ; ex. 0.18 = TVA 18 % (montant saisi = TTC) */
+  tauxTVA          Float           @default(0)
   observations     String?
   validePar        String?
   statutApprobation String   @default("APPROUVE")
@@ -70,10 +74,13 @@ model Operation {
   motifRefus       String?
   createdAt        DateTime        @default(now())
   updatedAt        DateTime        @updatedAt
+  piecesComptables PieceComptable[]
 
   @@index([date])
   @@index([categorieId])
   @@index([statutApprobation])
+  @@index([factureId])
+  @@index([numeroPiece])
 }
 
 model OperationCaisse {
@@ -97,10 +104,12 @@ model OperationCaisse {
   motifRefus       String?
   createdAt        DateTime        @default(now())
   updatedAt        DateTime        @updatedAt
+  piecesComptables PieceComptable[]
 
   @@index([date])
   @@index([categorieId])
   @@index([statutApprobation])
+  @@index([numeroPiece])
 }
 
 model Parametre {
@@ -185,6 +194,8 @@ model Facture {
   notes         String?
   createdAt     DateTime     @default(now())
   updatedAt     DateTime     @updatedAt
+  operations    Operation[]
+  piecesComptables PieceComptable[]
 
   @@index([clientId])
   @@index([date])
@@ -266,4 +277,27 @@ model AuditLog {
   @@index([createdAt])
   @@index([entity])
   @@index([userId])
+}
+
+model PieceComptable {
+  id                String           @id @default(cuid())
+  nomOriginal       String
+  cheminStockage    String
+  mimeType          String?
+  tailleOctets      Int?
+  typeDocument      String           @default("FACTURE")
+  libelle           String?
+  factureId         String?
+  facture           Facture?         @relation(fields: [factureId], references: [id], onDelete: Cascade)
+  operationId       String?
+  operation         Operation?       @relation(fields: [operationId], references: [id], onDelete: Cascade)
+  operationCaisseId String?
+  operationCaisse   OperationCaisse? @relation(fields: [operationCaisseId], references: [id], onDelete: Cascade)
+  uploadedBy        String?
+  createdAt         DateTime         @default(now())
+
+  @@index([factureId])
+  @@index([operationId])
+  @@index([operationCaisseId])
+  @@index([createdAt])
 }

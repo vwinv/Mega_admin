@@ -97,6 +97,13 @@ export function FacturationClient({
         </Card>
       </div>
 
+      <Alert type="info">
+        <strong>Facturation :</strong> créez une facture avec un{" "}
+        <strong>n° saisi manuellement</strong>, puis archivez le PDF ou le scan
+        sur la fiche facture (section « Archivage · pièces comptables »). Le
+        journal attribue automatiquement les n° de pièce <span className="font-mono">BN-…</span>.
+      </Alert>
+
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex rounded-xl border border-slate-200 bg-white p-1">
           {tabs.map((t) => (

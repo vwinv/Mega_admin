@@ -132,11 +132,6 @@ main table tbody tr:last-child td {
 }
 
 @media print {
-  @page {
-    margin: 12mm;
-    size: A4;
-  }
-
   body * {
     visibility: hidden;
   }
@@ -151,8 +146,6 @@ main table tbody tr:last-child td {
     left: 0;
     top: 0;
     width: 100%;
-    -webkit-print-color-adjust: exact;
-    print-color-adjust: exact;
   }
 
   .no-print {

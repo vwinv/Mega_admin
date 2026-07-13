@@ -30,7 +30,7 @@ export const STATUT_FACTURE_LABELS: Record<string, string> = {
   ANNULE: "Annulée",
 };
 
-export const MEGA_BRAND = "#c85a5a";
+export const MEGA_BRAND = "#d65a5a";
 
 export type LigneDoc = {
   id?: string;
@@ -80,31 +80,34 @@ export function computeTotauxFacture(
   return { totalHT, tva, totalTTC, reliquat, totalGeneral, resteAPayer };
 }
 
+/** Extrait la TVA d'un montant TTC (ex. écriture journal bancaire). */
+export function extractTvaFromTtc(montantTtc: number, tauxTVA: number): number {
+  if (tauxTVA <= 0 || montantTtc <= 0) return 0;
+  return Math.round(montantTtc * (tauxTVA / (1 + tauxTVA)));
+}
+
+/** HT correspondant à un montant TTC. */
+export function extractHtFromTtc(montantTtc: number, tauxTVA: number): number {
+  if (tauxTVA <= 0 || montantTtc <= 0) return montantTtc;
+  return montantTtc - extractTvaFromTtc(montantTtc, tauxTVA);
+}
+
 export function formatNumeroDoc(prefix: string, n: number): string {
   return `${prefix}${String(n).padStart(4, "0")}`;
 }
 
-export function nextNumeroFromList(numeros: string[], prefix = ""): string {
-  let max = 0;
-  for (const num of numeros) {
-    const stripped = prefix && num.startsWith(prefix) ? num.slice(prefix.length) : num;
-    const parsed = parseInt(stripped, 10);
-    if (!Number.isNaN(parsed) && parsed > max) max = parsed;
-  }
-  return formatNumeroDoc(prefix, max + 1);
-}
-
 export async function nextNumeroDevis(
-  findNumeros: () => Promise<string[]>
+  count: () => Promise<number>
 ): Promise<string> {
-  return nextNumeroFromList(await findNumeros());
+  const n = (await count()) + 1;
+  return formatNumeroDoc("", n);
 }
 
 export async function nextNumeroFacture(
-  findNumeros: () => Promise<string[]>
+  count: () => Promise<number>
 ): Promise<string> {
-  const numeros = await findNumeros();
-  return nextNumeroFromList(numeros, "F");
+  const n = (await count()) + 1;
+  return formatNumeroDoc("F", n);
 }
 
 /** Facture soumise au client (hors brouillon / annulée) → approbation CEO requise. */

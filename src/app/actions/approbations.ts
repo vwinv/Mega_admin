@@ -7,6 +7,10 @@ import { computeTotauxFacture } from "@/lib/facturation";
 import { prisma } from "@/lib/prisma";
 import { canApproveCeo } from "@/lib/roles";
 import type { SessionUser } from "@/lib/session";
+import {
+  ensureApprovisionnementCaisse,
+  isTransfertVersCaisse,
+} from "@/lib/transfert-caisse";
 
 const PATHS = [
   "/",
@@ -153,6 +157,19 @@ export async function approveOperation(
       return { ok: false, error: "Demande introuvable ou déjà traitée." };
     }
     await prisma.operation.update({ where: { id }, data });
+
+    // Transfert banque → caisse : créer l'entrée caisse à l'approbation
+    if (
+      (op.sortie ?? 0) > 0 &&
+      (await isTransfertVersCaisse(op.categorieId))
+    ) {
+      await ensureApprovisionnementCaisse({
+        montant: op.sortie!,
+        date: op.date,
+        codeBudgetaireId: op.codeBudgetaireId,
+        libelleJournal: op.libelle,
+      });
+    }
   } else if (source === "caisse") {
     const op = await prisma.operationCaisse.findUnique({ where: { id } });
     if (!op || op.statutApprobation !== "EN_ATTENTE_CEO") {

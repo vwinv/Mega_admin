@@ -31,6 +31,7 @@ export default async function CaissePage() {
           devise: params.devise,
           seuilDoubleValidation: params.seuilDoubleValidation,
           soldeInitialCaisse: params.soldeInitialCaisse,
+          tauxTVA: params.tauxTVA,
         }}
         soldeActuel={soldes?.soldeCaisse ?? params.soldeInitialCaisse}
       />

@@ -1,17 +1,25 @@
 "use client";
 
-import { Plus } from "lucide-react";
+import { Plus, X } from "lucide-react";
+import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import {
   createOperationCaisse,
   deleteOperationCaisse,
   updateOperationCaisse,
 } from "@/app/actions/caisse";
+import {
+  listPiecesCaisse,
+  type PieceComptableRow,
+} from "@/app/actions/pieces-comptables";
 import { OperationForm } from "@/components/OperationForm";
+import { PiecesComptablesPanel } from "@/components/PiecesComptablesPanel";
 import { usePermissions } from "@/components/PermissionsProvider";
 import { Pagination, paginateSlice } from "@/components/Pagination";
 import {
   Button,
+  Alert,
   Card,
   Fab,
   FormActions,
@@ -22,6 +30,11 @@ import {
   StickyToolbar,
 } from "@/components/ui";
 import { formatFcfa, formatFcfaLabel } from "@/lib/format";
+import { CONTROLE_FILTER_LABELS } from "@/lib/controle-helpers";
+import {
+  filterDoublons,
+  matchesCaisseControleFilter,
+} from "@/lib/controle-filters";
 import {
   CategorieOption,
   CodeBudgetaireOption,
@@ -47,6 +60,9 @@ export function CaisseClient({
   soldeActuel,
 }: Props) {
   const { canWrite } = usePermissions();
+  const searchParams = useSearchParams();
+  const controleFilter = searchParams.get("controle") ?? "";
+  const opId = searchParams.get("op");
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<OperationRow | null>(null);
   const [filtreMois, setFiltreMois] = useState("");
@@ -54,9 +70,36 @@ export function CaisseClient({
   const [filtreTexte, setFiltreTexte] = useState("");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
+  const [editPieces, setEditPieces] = useState<PieceComptableRow[]>([]);
+
+  useEffect(() => {
+    if (editing?.id) {
+      listPiecesCaisse(editing.id).then(setEditPieces);
+    } else {
+      setEditPieces([]);
+    }
+  }, [editing?.id]);
+
+  useEffect(() => {
+    if (!opId) return;
+    const op = operations.find((o) => o.id === opId);
+    if (op) {
+      setEditing(op);
+      setModalOpen(true);
+    }
+  }, [opId, operations]);
 
   const filtered = useMemo(() => {
-    return operations.filter((op) => {
+    let list = operations;
+    if (controleFilter === "doublon") {
+      list = filterDoublons(list);
+    } else if (controleFilter) {
+      list = list.filter((op) =>
+        matchesCaisseControleFilter(op, controleFilter)
+      );
+    }
+
+    return list.filter((op) => {
       if (filtreMois && op.date) {
         const m = new Date(op.date).getUTCMonth() + 1;
         if (String(m) !== filtreMois) return false;
@@ -70,11 +113,11 @@ export function CaisseClient({
         return false;
       return true;
     });
-  }, [operations, filtreMois, filtreCategorie, filtreTexte]);
+  }, [operations, controleFilter, filtreMois, filtreCategorie, filtreTexte]);
 
   useEffect(() => {
     setPage(1);
-  }, [filtreMois, filtreCategorie, filtreTexte]);
+  }, [controleFilter, filtreMois, filtreCategorie, filtreTexte]);
 
   const paginated = useMemo(
     () => paginateSlice(filtered, page, pageSize),
@@ -116,6 +159,31 @@ export function CaisseClient({
         />
         <StatCard label="Opérations" value={String(operations.length)} />
       </div>
+
+      <Alert type="info">
+        <strong>N° pièce automatique</strong> — format{" "}
+        <span className="font-mono">CA-2026-0001</span> à chaque nouvelle
+        opération caisse.
+      </Alert>
+
+      {controleFilter && (
+        <Alert type="info">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <span>
+              <strong>Filtre contrôle :</strong>{" "}
+              {CONTROLE_FILTER_LABELS[controleFilter] ?? controleFilter} —{" "}
+              {filtered.length} opération(s)
+            </span>
+            <Link
+              href="/caisse"
+              className="inline-flex items-center gap-1 text-sm font-medium text-amber-900 hover:underline"
+            >
+              <X className="h-4 w-4" />
+              Retirer le filtre
+            </Link>
+          </div>
+        </Alert>
+      )}
 
       <StickyToolbar>
         <div className="flex flex-wrap items-end gap-3">
@@ -167,6 +235,7 @@ export function CaisseClient({
             <thead>
               <tr>
                 <th className="text-left">Date</th>
+                <th className="text-left">N° pièce (auto)</th>
                 <th className="text-left">Motif</th>
                 <th className="text-left">Catégorie</th>
                 <th className="text-left">Compte</th>
@@ -184,6 +253,11 @@ export function CaisseClient({
                     {op.date
                       ? new Date(op.date).toLocaleDateString("fr-FR")
                       : ""}
+                  </td>
+                  <td className="font-mono text-xs text-slate-700">
+                    {op.numeroPiece || (
+                      <span className="text-slate-400">—</span>
+                    )}
                   </td>
                   <td className="max-w-[200px] truncate font-medium">
                     {op.libelle}
@@ -244,7 +318,11 @@ export function CaisseClient({
         open={modalOpen}
         onClose={closeModal}
         title={editing ? "Modifier l'opération" : "Nouvelle opération caisse"}
-        description="Petite caisse · formulaire centré, accessible depuis n'importe où sur la page"
+        description={
+          editing
+            ? "Modifiez l'écriture et archivez un justificatif ci-dessous."
+            : "Le n° de pièce (CA-année-xxxx) sera attribué automatiquement."
+        }
         size="lg"
         footer={
           <FormActions
@@ -272,6 +350,14 @@ export function CaisseClient({
           }}
           onCancel={closeModal}
         />
+        {editing?.id && (
+          <PiecesComptablesPanel
+            operationCaisseId={editing.id}
+            pieces={editPieces}
+            canEdit={canWrite}
+            compact
+          />
+        )}
       </Modal>
     </div>
   );

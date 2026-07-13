@@ -1,20 +1,10 @@
 import "dotenv/config";
-import { PrismaPg } from "@prisma/adapter-pg";
-import { PrismaClient } from "../src/generated/prisma/client";
-import { Pool } from "pg";
+import { createSeedPrisma } from "../prisma/seed-prisma";
 
-const url = process.env.DATABASE_URL;
+const url = process.env.DATABASE_URL ?? "";
 
 async function main() {
-  if (!url) {
-    console.error("DATABASE_URL manquant.");
-    process.exit(1);
-  }
-
-  console.log("PostgreSQL :", url.replace(/:[^:@]+@/, ":****@"));
-
-  const pool = new Pool({ connectionString: url });
-  const db = new PrismaClient({ adapter: new PrismaPg(pool) });
+  const db = createSeedPrisma();
 
   const [
     categories,
@@ -27,6 +17,10 @@ async function main() {
     tva,
     rapprochements,
     checklist,
+    users,
+    clients,
+    devis,
+    factures,
   ] = await Promise.all([
     db.categorie.count(),
     db.codeBudgetaire.count(),
@@ -38,11 +32,17 @@ async function main() {
     db.tvaDeclaration.count(),
     db.rapprochementBancaire.count(),
     db.checklistItem.count(),
+    db.user.count(),
+    db.clientFacturation.count(),
+    db.devis.count(),
+    db.facture.count(),
   ]);
 
   console.log("\n╔══════════════════════════════════════════╗");
   console.log("║   MEGA SN SARL · État de la base         ║");
   console.log("╚══════════════════════════════════════════╝\n");
+  console.log("PostgreSQL :", url.replace(/:[^:@]+@/, ":****@"));
+  console.log("");
 
   if (parametre) {
     console.log(`Entreprise  : ${parametre.entreprise}`);
@@ -54,11 +54,15 @@ async function main() {
   }
 
   console.log("Tables :");
+  console.log(`  Utilisateurs      : ${users}`);
   console.log(`  Catégories        : ${categories}`);
   console.log(`  Codes budgétaires : ${codes}`);
   console.log(`  Journal (banque)  : ${journal}`);
   console.log(`  Petite caisse     : ${caisse}`);
   console.log(`  Lignes budget     : ${budget}`);
+  console.log(`  Clients facture   : ${clients}`);
+  console.log(`  Devis             : ${devis}`);
+  console.log(`  Factures          : ${factures}`);
   console.log(`  Échéances impôts  : ${echeances}`);
   console.log(`  Déclarations TVA  : ${tva}`);
   console.log(`  Rapprochements    : ${rapprochements}`);
@@ -70,6 +74,6 @@ async function main() {
 
 main().catch((e) => {
   console.error("Erreur connexion base :", e.message);
-  console.error("\n→ Lancez : npm run db:setup");
+  console.error("\n→ Lancez : docker compose up -d && npm run db:setup");
   process.exit(1);
 });

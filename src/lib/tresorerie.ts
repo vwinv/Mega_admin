@@ -22,6 +22,14 @@ function getMois(date: Date | null): number | null {
   return date.getUTCMonth() + 1;
 }
 
+/** Fenêtre UTC de l'exercice comptable. */
+export function plageExercice(annee: number) {
+  return {
+    gte: new Date(Date.UTC(annee, 0, 1)),
+    lt: new Date(Date.UTC(annee + 1, 0, 1)),
+  };
+}
+
 function buildMensuel(
   ops: Mouvement[],
   soldeInitial: number,
@@ -64,20 +72,47 @@ function buildMensuel(
   return lignes;
 }
 
+/**
+ * Soldes courants de l'exercice (Parametre.annee).
+ * Aligné sur le solde fin décembre de getTresorerieMensuelle.
+ */
 export async function getSoldes() {
   const params = await prisma.parametre.findFirst();
   if (!params) return null;
 
-  const [journalAgg, caisseAgg] = await Promise.all([
-    prisma.operation.aggregate({
-      where: whereOperationApprouvee,
-      _sum: { entree: true, sortie: true },
-    }),
-    prisma.operationCaisse.aggregate({
-      where: whereOperationApprouvee,
-      _sum: { entree: true, sortie: true },
-    }),
-  ]);
+  const date = plageExercice(params.annee);
+  const whereExercice = {
+    ...whereOperationApprouvee,
+    date,
+  };
+
+  const [journalAgg, caisseAgg, pendingJournal, pendingCaisse] =
+    await Promise.all([
+      prisma.operation.aggregate({
+        where: whereExercice,
+        _sum: { entree: true, sortie: true },
+      }),
+      prisma.operationCaisse.aggregate({
+        where: whereExercice,
+        _sum: { entree: true, sortie: true },
+      }),
+      prisma.operation.aggregate({
+        where: {
+          statutApprobation: "EN_ATTENTE_CEO",
+          date,
+        },
+        _sum: { entree: true, sortie: true },
+        _count: true,
+      }),
+      prisma.operationCaisse.aggregate({
+        where: {
+          statutApprobation: "EN_ATTENTE_CEO",
+          date,
+        },
+        _sum: { entree: true, sortie: true },
+        _count: true,
+      }),
+    ]);
 
   const entreesBanque = journalAgg._sum.entree ?? 0;
   const sortiesBanque = journalAgg._sum.sortie ?? 0;
@@ -88,6 +123,14 @@ export async function getSoldes() {
     params.soldeInitialBanque + entreesBanque - sortiesBanque;
   const soldeCaisse =
     params.soldeInitialCaisse + entreesCaisse - sortiesCaisse;
+
+  const pendingCount =
+    (pendingJournal._count ?? 0) + (pendingCaisse._count ?? 0);
+  const pendingMontant =
+    (pendingJournal._sum.entree ?? 0) +
+    (pendingJournal._sum.sortie ?? 0) +
+    (pendingCaisse._sum.entree ?? 0) +
+    (pendingCaisse._sum.sortie ?? 0);
 
   return {
     params,
@@ -102,6 +145,8 @@ export async function getSoldes() {
     sortiesAnnee: sortiesBanque + sortiesCaisse,
     resultat:
       entreesBanque + entreesCaisse - (sortiesBanque + sortiesCaisse),
+    pendingCount,
+    pendingMontant,
   };
 }
 
@@ -109,15 +154,22 @@ export async function getTresorerieMensuelle() {
   const params = await prisma.parametre.findFirst();
   if (!params) return null;
 
-  const [journal, caisse] = await Promise.all([
+  const date = plageExercice(params.annee);
+  const whereExercice = {
+    ...whereOperationApprouvee,
+    date,
+  };
+
+  const [journal, caisse, soldes] = await Promise.all([
     prisma.operation.findMany({
-      where: whereOperationApprouvee,
+      where: whereExercice,
       select: { date: true, entree: true, sortie: true },
     }),
     prisma.operationCaisse.findMany({
-      where: whereOperationApprouvee,
+      where: whereExercice,
       select: { date: true, entree: true, sortie: true },
     }),
+    getSoldes(),
   ]);
 
   const banque = buildMensuel(journal, params.soldeInitialBanque, params.annee);
@@ -136,7 +188,155 @@ export async function getTresorerieMensuelle() {
     fin: b.fin + caisseRows[i].fin,
   }));
 
-  return { params, banque, caisse: caisseRows, total };
+  return {
+    params,
+    banque,
+    caisse: caisseRows,
+    total,
+    soldesActuels: soldes
+      ? {
+          soldeBanque: soldes.soldeBanque,
+          soldeCaisse: soldes.soldeCaisse,
+          tresorerieTotale: soldes.tresorerieTotale,
+          pendingCount: soldes.pendingCount,
+          pendingMontant: soldes.pendingMontant,
+        }
+      : null,
+    anomalies: await getAnomaliesTresorerie(params.annee, params.plafondCaisse),
+  };
+}
+
+export type AnomalieTresorerie = {
+  id: string;
+  type: "DOUBLON_BANQUE_CAISSE" | "CAISSE_SUR_PLAFOND" | "CAISSE_MONTANT_ELEVE";
+  severity: "error" | "warning";
+  message: string;
+  date: string | null;
+  montant: number;
+  /** Compte où l'écriture est (à tort ou à vérifier) */
+  compte: "banque" | "caisse";
+  reference: string;
+  href: string;
+  /** Si doublon : l'écriture correcte (souvent banque) */
+  contrepartie?: {
+    compte: "banque" | "caisse";
+    reference: string;
+    href: string;
+    id: string;
+  };
+  /** Action de correction proposée */
+  correction?: {
+    action: "supprimer_caisse" | "ouvrir_caisse" | "ouvrir_journal";
+    label: string;
+    targetId: string;
+  };
+};
+
+/**
+ * Détecte les écritures mal classées (ex. paiement chèque banque
+ * aussi saisi en petite caisse) et les montants caisse anormaux.
+ */
+export async function getAnomaliesTresorerie(
+  annee: number,
+  plafondCaisse: number
+): Promise<AnomalieTresorerie[]> {
+  const date = plageExercice(annee);
+  const whereExercice = { ...whereOperationApprouvee, date };
+
+  const [journal, caisse] = await Promise.all([
+    prisma.operation.findMany({
+      where: whereExercice,
+      select: {
+        id: true,
+        date: true,
+        numeroPiece: true,
+        libelle: true,
+        entree: true,
+        sortie: true,
+      },
+    }),
+    prisma.operationCaisse.findMany({
+      where: whereExercice,
+      select: {
+        id: true,
+        date: true,
+        numeroPiece: true,
+        libelle: true,
+        entree: true,
+        sortie: true,
+      },
+    }),
+  ]);
+
+  const anomalies: AnomalieTresorerie[] = [];
+  const seenCaisse = new Set<string>();
+
+  for (const c of caisse) {
+    const montant = c.entree ?? c.sortie ?? 0;
+    const sens = (c.entree ?? 0) > 0 ? "entree" : "sortie";
+    const lib = (c.libelle || "").trim().toLowerCase();
+    const d = c.date?.toISOString().slice(0, 10) ?? null;
+
+    const match = journal.find((j) => {
+      const jm = j.entree ?? j.sortie ?? 0;
+      const js = (j.entree ?? 0) > 0 ? "entree" : "sortie";
+      const jd = j.date?.toISOString().slice(0, 10) ?? null;
+      return (
+        jm === montant &&
+        js === sens &&
+        (j.libelle || "").trim().toLowerCase() === lib &&
+        jd === d
+      );
+    });
+
+    if (match && !seenCaisse.has(c.id)) {
+      seenCaisse.add(c.id);
+      anomalies.push({
+        id: `dup-${c.id}`,
+        type: "DOUBLON_BANQUE_CAISSE",
+        severity: "error",
+        message: `Saisi en banque ET en petite caisse : « ${c.libelle} ». Le montant doit rester sur un seul compte (souvent la banque pour un chèque / virement).`,
+        date: c.date?.toISOString() ?? null,
+        montant,
+        compte: "caisse",
+        reference: c.numeroPiece || c.id.slice(0, 8),
+        href: `/caisse?op=${c.id}`,
+        contrepartie: {
+          compte: "banque",
+          reference: match.numeroPiece || match.id.slice(0, 8),
+          href: `/journal?op=${match.id}`,
+          id: match.id,
+        },
+        correction: {
+          action: "supprimer_caisse",
+          label: "Retirer de la petite caisse (garder la banque)",
+          targetId: c.id,
+        },
+      });
+    }
+
+    // Sortie caisse > plafond : souvent une erreur de compte
+    if (sens === "sortie" && montant > plafondCaisse) {
+      anomalies.push({
+        id: `plafond-${c.id}`,
+        type: "CAISSE_SUR_PLAFOND",
+        severity: "warning",
+        message: `Sortie caisse ${montant.toLocaleString("fr-FR")} FCFA supérieure au plafond (${plafondCaisse.toLocaleString("fr-FR")} FCFA) — vérifier si ce n'est pas une opération banque.`,
+        date: c.date?.toISOString() ?? null,
+        montant,
+        compte: "caisse",
+        reference: c.numeroPiece || c.id.slice(0, 8),
+        href: `/caisse?op=${c.id}`,
+        correction: {
+          action: "ouvrir_caisse",
+          label: "Corriger dans la petite caisse",
+          targetId: c.id,
+        },
+      });
+    }
+  }
+
+  return anomalies;
 }
 
 export async function getDonneesGraphiques() {

@@ -3,10 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
-    "dev:webpack": "next dev --webpack",
-    "build": "next build",
-    "vercel-build": "prisma migrate deploy && next build",
+    "dev": "next dev --webpack",
+    "dev:turbo": "next dev",
+    "build": "next build --webpack",
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",
@@ -19,7 +18,7 @@
     "db:status": "npx tsx scripts/db-status.ts",
     "db:backup": "npx tsx scripts/db-backup.ts",
     "db:seed-users": "npx tsx scripts/seed-users-only.ts",
-    "db:seed-facturation": "npx tsx scripts/seed-facturation.ts",
+    "db:backfill-pieces": "npx tsx scripts/backfill-numero-piece.ts --all",
     "postinstall": "prisma generate"
   },
   "prisma": {
@@ -29,6 +28,7 @@
     "@prisma/adapter-pg": "^7.8.0",
     "@prisma/client": "^7.8.0",
     "bcryptjs": "^3.0.3",
+    "dotenv": "^17.4.2",
     "jose": "^6.2.3",
     "lucide-react": "^1.23.0",
     "next": "16.2.10",
@@ -46,12 +46,17 @@
     "@types/pg": "^8.20.0",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "dotenv": "^17.4.2",
     "eslint": "^9",
     "eslint-config-next": "16.2.10",
     "tailwindcss": "^4",
     "tsx": "^4.23.0",
     "typescript": "^5",
     "vitest": "^4.1.10"
+  },
+  "engines": {
+    "node": ">=20.9.0"
+  },
+  "optionalDependencies": {
+    "@next/swc-darwin-arm64": "^16.2.10"
   }
 }

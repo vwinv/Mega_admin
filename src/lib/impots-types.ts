@@ -76,11 +76,37 @@ export function computeTvaDue(
   return Math.max(0, collectee - deductible - creditReporte);
 }
 
+/** Facture ou écriture journal liée à une déclaration TVA mensuelle. */
+export type TvaSourceRef = {
+  id: string;
+  source: "FACTURE" | "JOURNAL";
+  reference: string;
+  label: string;
+  date: string;
+  statut: string;
+  totalHT: number;
+  tva: number;
+  totalTTC: number;
+  tauxTVA: number;
+  href: string;
+  sens: "collectee" | "deductible";
+};
+
+/** @deprecated alias — préférer TvaSourceRef */
+export type TvaFactureRef = TvaSourceRef;
+
 export type TvaMensuelle = {
   mois: number;
   label: string;
+  /** Montant saisi / déclaré (peut être synchronisé depuis les sources) */
   collectee: number;
   deductible: number;
   creditReporte: number;
   tvaDue: number;
+  /** Somme TVA collectée auto (factures + entrées journal avec TVA) */
+  tvaFacturee: number;
+  /** Somme TVA déductible auto (sorties journal avec TVA) */
+  tvaDeductibleAuto: number;
+  /** Références (factures + journal) */
+  factures: TvaSourceRef[];
 };

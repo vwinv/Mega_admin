@@ -2,7 +2,6 @@
 
 import { revalidatePath } from "next/cache";
 import {
-  APPROVISIONNEMENT_CAISSE,
   TRANSFERT_VERS_CAISSE,
 } from "@/lib/constants";
 import {
@@ -12,7 +11,10 @@ import {
 } from "@/lib/approbation";
 import { guardWrite, isGuardError } from "@/lib/auth-guard";
 import { logAudit } from "@/lib/audit";
+import { nextNumeroPieceBanque } from "@/lib/numero-piece";
+import { syncTvaDeclarationMois } from "@/lib/impots";
 import { prisma } from "@/lib/prisma";
+import { ensureApprovisionnementCaisse } from "@/lib/transfert-caisse";
 import { OperationInput, montantOperationInchange, validateOperation } from "@/lib/validation";
 
 function parseDate(value: string): Date | null {
@@ -20,42 +22,25 @@ function parseDate(value: string): Date | null {
   return new Date(`${value}T00:00:00.000Z`);
 }
 
-function toDbFields(input: OperationInput) {
+async function syncTvaForDate(date: Date | null) {
+  if (!date) return;
+  await syncTvaDeclarationMois(date.getUTCFullYear(), date.getUTCMonth() + 1);
+}
+
+function toDbFields(input: OperationInput, numeroPiece?: string | null) {
   return {
     date: parseDate(input.date),
-    numeroPiece: input.numeroPiece.trim() || null,
+    numeroPiece: numeroPiece ?? (input.numeroPiece.trim() || null),
     libelle: input.libelle.trim(),
     categorieId: input.categorieId,
     codeBudgetaireId: input.codeBudgetaireId || null,
     modePaiement: input.modePaiement || null,
     entree: input.montantType === "entree" ? input.montant : null,
     sortie: input.montantType === "sortie" ? input.montant : null,
+    tauxTVA: input.tauxTVA && input.tauxTVA > 0 ? input.tauxTVA : 0,
     observations: input.observations.trim() || null,
     validePar: input.validePar.trim() || null,
   };
-}
-
-async function createTransfertCaisse(
-  montant: number,
-  date: Date | null,
-  codeBudgetaireId: string | null
-) {
-  const catAppro = await prisma.categorie.findFirst({
-    where: { nom: APPROVISIONNEMENT_CAISSE },
-  });
-  if (!catAppro) return;
-
-  await prisma.operationCaisse.create({
-    data: {
-      date,
-      libelle: "Approvisionnement petite caisse",
-      categorieId: catAppro.id,
-      codeBudgetaireId,
-      entree: montant,
-      sortie: null,
-      statutApprobation: "APPROUVE",
-    },
-  });
 }
 
 type OpResult =
@@ -87,8 +72,10 @@ export async function createOperation(input: OperationInput): Promise<OpResult> 
     params.seuilDoubleValidation,
     guard.nom
   );
+  const opDate = parseDate(input.date);
+  const numeroPiece = await nextNumeroPieceBanque(prisma, opDate);
   const created = await prisma.operation.create({
-    data: { ...toDbFields(enriched), ...approval },
+    data: { ...toDbFields(enriched, numeroPiece), ...approval },
   });
 
   await logAudit({
@@ -107,15 +94,21 @@ export async function createOperation(input: OperationInput): Promise<OpResult> 
     input.montantType === "sortie" &&
     !ceoPending
   ) {
-    await createTransfertCaisse(
-      input.montant,
-      parseDate(input.date),
-      input.codeBudgetaireId || null
-    );
+    await ensureApprovisionnementCaisse({
+      montant: input.montant,
+      date: parseDate(input.date),
+      codeBudgetaireId: input.codeBudgetaireId || null,
+      libelleJournal: enriched.libelle,
+    });
+  }
+
+  if ((input.tauxTVA ?? 0) > 0) {
+    await syncTvaForDate(opDate);
   }
 
   revalidatePath("/journal");
   revalidatePath("/caisse");
+  revalidatePath("/impots");
   revalidatePath("/");
   revalidatePath("/tresorerie");
   revalidatePath("/budget");
@@ -172,7 +165,10 @@ export async function updateOperation(
 
   await prisma.operation.update({
     where: { id },
-    data: { ...toDbFields(enriched), ...approvalUpdate },
+    data: {
+      ...toDbFields(enriched, existing.numeroPiece),
+      ...approvalUpdate,
+    },
   });
 
   await logAudit({
@@ -184,7 +180,15 @@ export async function updateOperation(
     details: `${enriched.libelle} · ${enriched.montant.toLocaleString("fr-FR")} FCFA`,
   });
 
+  const oldHadTva = (existing.tauxTVA ?? 0) > 0;
+  const newHasTva = (input.tauxTVA ?? 0) > 0;
+  if (oldHadTva || newHasTva) {
+    await syncTvaForDate(existing.date);
+    await syncTvaForDate(parseDate(input.date));
+  }
+
   revalidatePath("/journal");
+  revalidatePath("/impots");
   revalidatePath("/");
   revalidatePath("/tresorerie");
   revalidatePath("/budget");
@@ -218,7 +222,13 @@ export async function deleteOperation(
     entityId: id,
     details: existing.libelle,
   });
+
+  if ((existing.tauxTVA ?? 0) > 0) {
+    await syncTvaForDate(existing.date);
+  }
+
   revalidatePath("/journal");
+  revalidatePath("/impots");
   revalidatePath("/");
   revalidatePath("/tresorerie");
   revalidatePath("/budget");

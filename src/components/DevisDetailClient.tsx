@@ -186,12 +186,12 @@ export function DevisDetailClient({
     devis.lignes.length > 0 ? devis.lignes : [emptyLigne(0)]
   );
   const [reliquat, setReliquat] = useState("0");
+  const [factureNumero, setFactureNumero] = useState("");
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
   const clientNom =
     devis.clientNom ?? clients.find((c) => c.id === clientId)?.nom ?? "";
-  const displayNumero = devis.numero ?? "—";
   const totalHT = lignes.reduce((s, l) => s + l.prix, 0);
 
   async function handleSave(e: FormEvent) {
@@ -221,8 +221,12 @@ export function DevisDetailClient({
 
   async function handleConvert() {
     if (!devis.id) return;
+    if (!factureNumero.trim()) {
+      setError("Indiquez le numéro de facture.");
+      return;
+    }
     const rel = parseInt(reliquat, 10) || 0;
-    const result = await convertirDevisEnFacture(devis.id, rel);
+    const result = await convertirDevisEnFacture(devis.id, factureNumero, rel);
     if (!result.ok) {
       setError(result.error);
       return;
@@ -271,14 +275,22 @@ export function DevisDetailClient({
             </Button>
           )}
           {canEdit && devis.id && !devis.factureId && devis.statut !== "FACTURE" && (
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-end gap-2">
+              <Input
+                label="N° facture"
+                value={factureNumero}
+                onChange={(e) => setFactureNumero(e.target.value)}
+                className="!w-40"
+                placeholder="ex. F2026-001"
+                required
+              />
               <Input
                 type="number"
                 min={0}
+                label="Reliquat"
                 value={reliquat}
                 onChange={(e) => setReliquat(e.target.value)}
                 className="!w-32"
-                placeholder="Reliquat"
               />
               <Button onClick={handleConvert}>Convertir en facture</Button>
             </div>
@@ -297,19 +309,6 @@ export function DevisDetailClient({
         <Card>
           <form id="devis-form" onSubmit={handleSave} className="space-y-6">
             <div className="grid gap-4 md:grid-cols-2">
-              <div>
-                <span className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-500">
-                  N° devis
-                </span>
-                <p className="rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-sm font-semibold text-mega-700">
-                  {displayNumero}
-                </p>
-                {isNew && (
-                  <p className="mt-1 text-xs text-slate-500">
-                    Attribué automatiquement à l&apos;enregistrement
-                  </p>
-                )}
-              </div>
               <Input
                 label="Titre du devis"
                 value={titre}
@@ -403,7 +402,7 @@ export function DevisDetailClient({
         </Card>
       ) : (
         <DevisPrintView
-          numero={displayNumero}
+          numero={devis.numero ?? "—"}
           titre={titre}
           date={date}
           clientNom={clientNom}

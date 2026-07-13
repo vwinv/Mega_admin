@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import {
+  Archive,
   BarChart3,
   Building2,
   Calculator,
@@ -58,6 +59,7 @@ const navGroups: { title: string; items: NavItem[] }[] = [
       { href: "/journal", label: "Journal", icon: Receipt },
       { href: "/caisse", label: "Petite caisse", icon: Wallet },
       { href: "/facturation", label: "Facturation", icon: FileText },
+      { href: "/archives", label: "Archives", icon: Archive },
     ],
   },
   {
@@ -183,14 +185,28 @@ export function Sidebar({ user }: { user: SessionUser | null }) {
         <div className="flex items-center gap-2.5">
           <MegaLogo width={150} priority />
         </div>
-        <button
-          type="button"
-          onClick={() => setMobileOpen(true)}
-          className="rounded-lg p-2 text-slate-600 hover:bg-slate-100"
-          aria-label="Ouvrir le menu"
-        >
-          <Menu className="h-5 w-5" />
-        </button>
+        <div className="flex items-center gap-1">
+          {user && (
+            <form action={logout}>
+              <button
+                type="submit"
+                className="rounded-lg p-2 text-red-600 hover:bg-red-50"
+                aria-label="Déconnexion"
+                title="Déconnexion"
+              >
+                <LogOut className="h-5 w-5" />
+              </button>
+            </form>
+          )}
+          <button
+            type="button"
+            onClick={() => setMobileOpen(true)}
+            className="rounded-lg p-2 text-slate-600 hover:bg-slate-100"
+            aria-label="Ouvrir le menu"
+          >
+            <Menu className="h-5 w-5" />
+          </button>
+        </div>
       </div>
 
       {mobileOpen && (

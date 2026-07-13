@@ -1,3 +1,29 @@
+export type ControleSource = {
+  label: string;
+  href: string;
+};
+
+export type Controle = {
+  id: number;
+  libelle: string;
+  statut: "OK" | "ALERTE";
+  detail: string;
+  /** Page principale liée au contrôle */
+  href?: string;
+  /** Écritures ou éléments à l'origine de l'alerte */
+  sources?: ControleSource[];
+};
+
+export const CONTROLE_FILTER_LABELS: Record<string, string> = {
+  "sans-date": "Opérations sans date",
+  "sans-piece": "Opérations sans n° de pièce",
+  "sans-code-budget": "Sorties sans code budgétaire",
+  "double-montant": "Lignes entrée + sortie",
+  doublon: "Doublons potentiels",
+  "transfert-caisse": "Transferts vers la caisse",
+  "appro-caisse": "Approvisionnements caisse",
+};
+
 export const CHECKLIST_TACHES = [
   { id: 1, libelle: "Rapprochement bancaire du mois" },
   { id: 2, libelle: "Rapprochement petite caisse" },
@@ -11,13 +37,6 @@ export const CHECKLIST_TACHES = [
   { id: 10, libelle: "Archivage des pièces justificatives" },
   { id: 11, libelle: "Revue du tableau de bord" },
 ] as const;
-
-export type Controle = {
-  id: number;
-  libelle: string;
-  statut: "OK" | "ALERTE";
-  detail: string;
-};
 
 export const RECOMMANDATIONS: Record<number, string> = {
   1: "Compléter les dates manquantes sur toutes les opérations.",

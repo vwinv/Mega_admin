@@ -14,6 +14,7 @@ function serializeOp(
     modePaiement?: string | null;
     entree: number | null;
     sortie: number | null;
+    tauxTVA?: number | null;
     observations: string | null;
     validePar: string | null;
     statutApprobation?: string;
@@ -36,6 +37,7 @@ function serializeOp(
     modePaiement: op.modePaiement ?? null,
     entree: op.entree,
     sortie: op.sortie,
+    tauxTVA: op.tauxTVA ?? 0,
     observations: op.observations,
     validePar: op.validePar,
     statutApprobation: op.statutApprobation ?? "APPROUVE",

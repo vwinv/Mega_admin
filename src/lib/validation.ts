@@ -13,6 +13,8 @@ export type OperationInput = {
   modePaiement?: string;
   montantType: "entree" | "sortie";
   montant: number;
+  /** 0 = hors TVA ; ex. 0.18 */
+  tauxTVA?: number;
   observations: string;
   validePar: string;
 };

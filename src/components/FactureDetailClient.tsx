@@ -10,7 +10,9 @@ import {
   type ClientRow,
 } from "@/app/actions/facturation";
 import { FacturePrintView } from "@/components/FacturationPrint";
-import { formatFcfaLabel } from "@/lib/format";
+import { PiecesComptablesPanel } from "@/components/PiecesComptablesPanel";
+import type { PieceComptableRow } from "@/app/actions/pieces-comptables";
+import { formatFcfa, formatFcfaLabel } from "@/lib/format";
 import {
   STATUTS_FACTURE,
   STATUT_FACTURE_LABELS,
@@ -135,6 +137,7 @@ function LigneEditor({
 export function FactureDetailClient({
   facture,
   clients,
+  pieces,
   canEdit,
 }: {
   facture: {
@@ -164,12 +167,14 @@ export function FactureDetailClient({
     clientNom?: string;
   };
   clients: ClientRow[];
+  pieces: PieceComptableRow[];
   canEdit: boolean;
 }) {
   const router = useRouter();
   const isNew = !facture.id;
   const [editMode, setEditMode] = useState(isNew);
   const [error, setError] = useState<string | null>(null);
+  const [numero, setNumero] = useState(facture.numero ?? "");
   const [titre, setTitre] = useState(facture.titre ?? "");
   const [date, setDate] = useState(facture.date.slice(0, 10));
   const [clientId, setClientId] = useState(facture.clientId);
@@ -202,6 +207,7 @@ export function FactureDetailClient({
     setSaving(true);
     const result = await saveFacture({
       id: facture.id,
+      numero,
       titre,
       date,
       clientId,
@@ -271,6 +277,18 @@ export function FactureDetailClient({
           ← Retour facturation
         </Link>
         <div className="flex flex-wrap gap-2">
+          {!isNew && totaux.tva > 0 && facture.statut !== "BROUILLON" && facture.statut !== "ANNULE" && (
+            <Link
+              href="/impots"
+              className="inline-flex items-center rounded-lg border border-mega-200 bg-mega-50 px-3 py-1.5 text-xs font-medium text-mega-800 hover:bg-mega-100"
+            >
+              TVA {formatFcfa(totaux.tva)} · déclaration{" "}
+              {new Date(facture.date).toLocaleDateString("fr-FR", {
+                month: "long",
+                year: "numeric",
+              })}
+            </Link>
+          )}
           {!isNew && (
             <Button variant="secondary" onClick={() => window.print()}>
               Imprimer
@@ -300,6 +318,12 @@ export function FactureDetailClient({
       {!isNew && (
         <Card className="no-print !p-4">
           <div className="flex flex-wrap gap-6 text-sm">
+            <div>
+              <p className="text-xs text-slate-500">N° facture</p>
+              <p className="font-mono text-lg font-bold text-mega-800">
+                {facture.numero}
+              </p>
+            </div>
             <div>
               <p className="text-xs text-slate-500">Statut</p>
               <p className="font-semibold">
@@ -359,6 +383,22 @@ export function FactureDetailClient({
 
       {error && <Alert type="error">{error}</Alert>}
 
+      {isNew && (
+        <Alert type="info">
+          Saisissez le <strong>n° de facture manuellement</strong> (ex. F2026-0042),
+          puis enregistrez. Vous pourrez ensuite joindre des pièces comptables
+          (PDF, scan…).
+        </Alert>
+      )}
+
+      {!isNew && facture.id && (
+        <PiecesComptablesPanel
+          factureId={facture.id}
+          pieces={pieces}
+          canEdit={canEdit}
+        />
+      )}
+
       {!isNew && facture.statutApprobation === "EN_ATTENTE_CEO" && (
         <Alert type="info">
           Cette facture est en attente d&apos;approbation par la CEO. Le paiement
@@ -370,6 +410,13 @@ export function FactureDetailClient({
         <Card>
           <form id="facture-form" onSubmit={handleSave} className="space-y-6">
             <div className="grid gap-4 md:grid-cols-2">
+              <Input
+                label="N° facture"
+                value={numero}
+                onChange={(e) => setNumero(e.target.value)}
+                placeholder="ex. F2026-0042"
+                required
+              />
               <Input
                 label="Titre (optionnel)"
                 value={titre}
@@ -526,7 +573,8 @@ export function FactureDetailClient({
             required
           />
           <p className="text-xs text-slate-500">
-            Une écriture d&apos;entrée sera créée automatiquement dans le journal.
+            Une écriture d&apos;entrée sera créée au journal avec un n° de pièce
+            automatique (BN-année-xxxx).
           </p>
         </form>
       </Modal>

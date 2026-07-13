@@ -1,7 +1,6 @@
-# Base PostgreSQL pour MEGA SN SARL (optionnel — production / équipe)
+# Base PostgreSQL pour MEGA SN SARL
 # Démarrer : docker compose up -d
-# Puis dans .env : DATABASE_URL="postgresql://mega:mega_secret@localhost:5432/mega_finance"
-# Et changer provider dans prisma/schema.prisma en "postgresql", puis : npm run db:setup
+# Puis : npm run db:setup
 
 services:
   postgres:

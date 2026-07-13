@@ -25,6 +25,8 @@ export type OperationRow = {
   modePaiement: string | null;
   entree: number | null;
   sortie: number | null;
+  /** 0 = hors TVA ; 0.18 = TVA 18 % */
+  tauxTVA: number;
   observations: string | null;
   validePar: string | null;
   statutApprobation: string;
@@ -39,4 +41,5 @@ export type ParametresApp = {
   devise: string;
   seuilDoubleValidation: number;
   soldeInitialCaisse: number;
+  tauxTVA: number;
 };

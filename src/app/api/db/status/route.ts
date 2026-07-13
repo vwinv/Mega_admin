@@ -40,7 +40,7 @@ export async function GET() {
           error instanceof Error
             ? error.message
             : "Base de données inaccessible",
-        hint: "Lancez : npm run db:setup",
+        hint: "Lancez : docker compose up -d && npm run db:setup",
       },
       { status: 503 }
     );

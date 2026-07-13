@@ -1,9 +1,15 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { ExternalLink } from "lucide-react";
 import { saveChecklistItem, saveRapprochement } from "@/app/actions/controle";
 import { Card, StatCard } from "@/components/ui";
-import { CHECKLIST_TACHES, Controle, RECOMMANDATIONS } from "@/lib/controle-helpers";
+import {
+  CHECKLIST_TACHES,
+  Controle,
+  RECOMMANDATIONS,
+} from "@/lib/controle-helpers";
 import { formatFcfa } from "@/lib/format";
 import { LigneRapprochement } from "@/lib/rapprochement-types";
 
@@ -56,48 +62,86 @@ export function ControleClient({
           value={String(alertes)}
           variant={alertes > 0 ? "negative" : "positive"}
         />
-        <StatCard
-          label="Total contrôles"
-          value="13"
-        />
+        <StatCard label="Total contrôles" value="13" />
       </div>
 
       <Card>
-        <h2 className="section-title mb-4">13 contrôles automatiques</h2>
+        <h2 className="section-title mb-2">13 contrôles automatiques</h2>
+        <p className="mb-4 text-sm text-slate-500">
+          Cliquez sur une alerte ou sur une source pour ouvrir l&apos;écriture
+          concernée.
+        </p>
         <div className="space-y-3">
-          {controles.map((c) => (
-            <div
-              key={c.id}
-              className={`rounded-xl border p-4 transition-shadow hover:shadow-sm ${
-                c.statut === "ALERTE"
-                  ? "border-red-200/80 bg-gradient-to-r from-red-50/90 to-white"
-                  : "border-mega-200/80 bg-gradient-to-r from-mega-50/90 to-white"
-              }`}
-            >
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <p className="font-semibold text-slate-800">
-                    {c.id}. {c.libelle}
-                  </p>
-                  <p className="mt-1 text-sm text-slate-600">{c.detail}</p>
-                  {c.statut === "ALERTE" && RECOMMANDATIONS[c.id] && (
-                    <p className="mt-2 text-sm font-medium text-red-800">
-                      → {RECOMMANDATIONS[c.id]}
-                    </p>
-                  )}
+          {controles.map((c) => {
+            const isAlerte = c.statut === "ALERTE";
+            const primaryHref =
+              isAlerte && c.sources?.[0]?.href
+                ? c.sources[0].href
+                : c.href;
+
+            return (
+              <div
+                key={c.id}
+                className={`rounded-xl border p-4 transition-shadow ${
+                  isAlerte
+                    ? "border-red-200/80 bg-gradient-to-r from-red-50/90 to-white"
+                    : "border-mega-200/80 bg-gradient-to-r from-mega-50/90 to-white"
+                }`}
+              >
+                <div className="flex items-start justify-between gap-4">
+                  <div className="min-w-0 flex-1">
+                    {isAlerte && primaryHref ? (
+                      <Link
+                        href={primaryHref}
+                        className="group inline-flex items-start gap-2 font-semibold text-slate-800 hover:text-mega-700"
+                      >
+                        <span>
+                          {c.id}. {c.libelle}
+                        </span>
+                        <ExternalLink className="mt-0.5 h-4 w-4 shrink-0 opacity-60 group-hover:opacity-100" />
+                      </Link>
+                    ) : (
+                      <p className="font-semibold text-slate-800">
+                        {c.id}. {c.libelle}
+                      </p>
+                    )}
+                    <p className="mt-1 text-sm text-slate-600">{c.detail}</p>
+
+                    {isAlerte && c.sources && c.sources.length > 0 && (
+                      <ul className="mt-3 space-y-1.5 border-t border-red-100 pt-3">
+                        {c.sources.map((s, i) => (
+                          <li key={`${c.id}-${i}`}>
+                            <Link
+                              href={s.href}
+                              className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm text-red-900 hover:bg-red-100/60"
+                            >
+                              <ExternalLink className="h-3.5 w-3.5 shrink-0 text-red-600" />
+                              <span className="truncate">{s.label}</span>
+                            </Link>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+
+                    {isAlerte && RECOMMANDATIONS[c.id] && (
+                      <p className="mt-2 text-sm font-medium text-red-800">
+                        → {RECOMMANDATIONS[c.id]}
+                      </p>
+                    )}
+                  </div>
+                  <span
+                    className={`shrink-0 rounded-full px-3 py-1 text-xs font-bold ${
+                      isAlerte
+                        ? "bg-red-200 text-red-800"
+                        : "bg-mega-200 text-mega-800"
+                    }`}
+                  >
+                    {c.statut}
+                  </span>
                 </div>
-                <span
-                  className={`shrink-0 rounded-full px-3 py-1 text-xs font-bold ${
-                    c.statut === "ALERTE"
-                      ? "bg-red-200 text-red-800"
-                      : "bg-mega-200 text-mega-800"
-                  }`}
-                >
-                  {c.statut}
-                </span>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </Card>
 

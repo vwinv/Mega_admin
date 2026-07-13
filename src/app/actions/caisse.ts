@@ -9,6 +9,7 @@ import {
 } from "@/lib/approbation";
 import { guardWrite, isGuardError } from "@/lib/auth-guard";
 import { logAudit } from "@/lib/audit";
+import { nextNumeroPieceCaisse } from "@/lib/numero-piece";
 import { prisma } from "@/lib/prisma";
 import { computeSoldeCaisseApres } from "@/lib/tresorerie";
 import { OperationInput, montantOperationInchange, validateOperation } from "@/lib/validation";
@@ -18,10 +19,10 @@ function parseDate(value: string): Date | null {
   return new Date(`${value}T00:00:00.000Z`);
 }
 
-function toDbFields(input: OperationInput) {
+function toDbFields(input: OperationInput, numeroPiece?: string | null) {
   return {
     date: parseDate(input.date),
-    numeroPiece: input.numeroPiece.trim() || null,
+    numeroPiece: numeroPiece ?? (input.numeroPiece.trim() || null),
     libelle: input.libelle.trim(),
     categorieId: input.categorieId,
     codeBudgetaireId: input.codeBudgetaireId || null,
@@ -76,8 +77,10 @@ export async function createOperationCaisse(
     params.seuilDoubleValidation,
     guard.nom
   );
+  const opDate = parseDate(input.date);
+  const numeroPiece = await nextNumeroPieceCaisse(prisma, opDate);
   const created = await prisma.operationCaisse.create({
-    data: { ...toDbFields(enriched), ...approval },
+    data: { ...toDbFields(enriched, numeroPiece), ...approval },
   });
 
   await logAudit({
@@ -160,7 +163,10 @@ export async function updateOperationCaisse(
 
   await prisma.operationCaisse.update({
     where: { id },
-    data: { ...toDbFields(enriched), ...approvalUpdate },
+    data: {
+      ...toDbFields(enriched, existing.numeroPiece),
+      ...approvalUpdate,
+    },
   });
 
   await logAudit({

@@ -3,6 +3,7 @@ export const AUDIT_ACTIONS = [
   "UPDATE",
   "DELETE",
   "LOGIN",
+  "LOGOUT",
   "IMPORT",
   "EXPORT",
 ] as const;
@@ -45,6 +46,7 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
   UPDATE: "Modification",
   DELETE: "Suppression",
   LOGIN: "Connexion",
+  LOGOUT: "Déconnexion",
   IMPORT: "Import",
   EXPORT: "Export",
 };

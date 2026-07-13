@@ -50,8 +50,13 @@ src/generated/prisma/
 # Base de données locale
 data/*.db
 data/backups/
+data/archives/**
 !data/.gitkeep
+!data/archives/.gitkeep
 
 # Cache
 .turbo/
 .cache/
+
+# Render
+.render/

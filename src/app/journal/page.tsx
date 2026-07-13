@@ -27,6 +27,7 @@ export default async function JournalPage() {
           devise: params.devise,
           seuilDoubleValidation: params.seuilDoubleValidation,
           soldeInitialCaisse: params.soldeInitialCaisse,
+          tauxTVA: params.tauxTVA,
         }}
       />
     </div>

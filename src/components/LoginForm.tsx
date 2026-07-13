@@ -64,13 +64,16 @@ export function LoginForm({ googleEnabled }: { googleEnabled: boolean }) {
   return (
     <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-slate-50 via-white to-mega-50/40 px-4 py-10">
       <div className="w-full max-w-md">
-        <div className="mb-8">
-          <MegaLogo width={200} priority />
-          <p className="mt-4 text-sm font-medium text-mega-700">
-            Gestion financière MEGA SN SARL
-          </p>
-          <p className="mt-1 text-sm text-slate-500">Connexion sécurisée</p>
-        </div>
+          <div className="mb-8 text-center">
+            <MegaLogo width={200} priority />
+            <h1 className="mt-4 text-xl font-semibold text-slate-900">
+              Connexion
+            </h1>
+            <p className="mt-1 text-sm font-medium text-mega-700">
+              Gestion financière MEGA SN SARL
+            </p>
+            <p className="mt-1 text-sm text-slate-500">Accès sécurisé au personnel</p>
+          </div>
 
         <div className="rounded-2xl border border-slate-200/80 bg-white p-8 shadow-xl shadow-slate-900/5">
           {(error || googleError) && (

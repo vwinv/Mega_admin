@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import {
   createSession,
   destroySession,
+  getSession,
   hashPassword,
   requireAuth,
   verifyPassword,
@@ -72,6 +73,17 @@ export async function login(
 }
 
 export async function logout(): Promise<void> {
+  const user = await getSession();
+  if (user) {
+    await logAudit({
+      userId: user.id,
+      userNom: user.nom,
+      action: "LOGOUT",
+      entity: "User",
+      entityId: user.id,
+      details: "Déconnexion",
+    });
+  }
   await destroySession();
   redirect("/login");
 }

@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { DevisDetailClient } from "@/components/DevisDetailClient";
 import { PageHeader } from "@/components/ui";
-import { getDevisComplet, listClients, previewNextNumeroDevis } from "@/app/actions/facturation";
+import { getDevisComplet, listClients } from "@/app/actions/facturation";
 import { getSession } from "@/lib/auth";
 import { canWrite } from "@/lib/roles";
 
@@ -18,16 +18,11 @@ export default async function DevisPage({
 
   if (id === "nouveau") {
     const today = new Date().toISOString().slice(0, 10);
-    const nextNumero = await previewNextNumeroDevis();
     return (
       <div>
-        <PageHeader
-          title="Nouveau devis"
-          description={`N° ${nextNumero} · Création d'un devis client`}
-        />
+        <PageHeader title="Nouveau devis" description="Création d'un devis client" />
         <DevisDetailClient
           devis={{
-            numero: nextNumero,
             titre: "",
             date: today,
             statut: "BROUILLON",
