@@ -17,26 +17,34 @@ export type GoogleUserInfo = {
   picture?: string;
 };
 
+function cleanEnv(value: string | undefined): string {
+  return (value ?? "")
+    .trim()
+    .replace(/^["']|["']$/g, "")
+    .trim();
+}
+
 export function isGoogleAuthEnabled(): boolean {
-  const clientId = process.env.GOOGLE_CLIENT_ID?.trim();
-  const clientSecret = process.env.GOOGLE_CLIENT_SECRET?.trim();
+  const clientId = cleanEnv(process.env.GOOGLE_CLIENT_ID);
+  const clientSecret = cleanEnv(process.env.GOOGLE_CLIENT_SECRET);
   return Boolean(clientId && clientSecret);
 }
 
 export function getGoogleAuthConfig(baseUrl: string): GoogleAuthConfig | null {
-  const clientId = process.env.GOOGLE_CLIENT_ID;
-  const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+  const clientId = cleanEnv(process.env.GOOGLE_CLIENT_ID);
+  const clientSecret = cleanEnv(process.env.GOOGLE_CLIENT_SECRET);
   if (!clientId || !clientSecret) return null;
 
+  const redirectOverride = cleanEnv(process.env.GOOGLE_REDIRECT_URI);
   const redirectUri =
-    process.env.GOOGLE_REDIRECT_URI ??
+    redirectOverride ||
     `${baseUrl.replace(/\/$/, "")}/api/auth/google/callback`;
 
   return {
     clientId,
     clientSecret,
     redirectUri,
-    allowedDomain: process.env.GOOGLE_ALLOWED_DOMAIN?.trim().toLowerCase() || null,
+    allowedDomain: cleanEnv(process.env.GOOGLE_ALLOWED_DOMAIN).toLowerCase() || null,
   };
 }
 
@@ -98,12 +106,12 @@ export async function fetchGoogleUserInfo(
 }
 
 export function getRequestBaseUrl(request: Request): string {
-  const envUrl = process.env.NEXT_PUBLIC_APP_URL?.trim();
+  const envUrl = cleanEnv(process.env.NEXT_PUBLIC_APP_URL);
   if (envUrl) return envUrl.replace(/\/$/, "");
 
   const host =
     request.headers.get("x-forwarded-host") ?? request.headers.get("host");
   const proto = request.headers.get("x-forwarded-proto") ?? "http";
-  if (host) return `${proto}://${host}`;
+  if (host) return `${proto.split(",")[0].trim()}://${host.split(",")[0].trim()}`;
   return "http://localhost:3000";
 }
