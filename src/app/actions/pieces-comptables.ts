@@ -84,12 +84,15 @@ function revalidateArchives(piece: {
   if (piece.operationCaisseId) revalidatePath("/caisse");
 }
 
+const pieceListOmit = { contenu: true } as const;
+
 export async function listPiecesFacture(
   factureId: string
 ): Promise<PieceComptableRow[]> {
   const rows = await prisma.pieceComptable.findMany({
     where: { factureId },
     orderBy: { createdAt: "desc" },
+    omit: pieceListOmit,
   });
   return rows.map(toRow);
 }
@@ -100,6 +103,7 @@ export async function listPiecesOperation(
   const rows = await prisma.pieceComptable.findMany({
     where: { operationId },
     orderBy: { createdAt: "desc" },
+    omit: pieceListOmit,
   });
   return rows.map(toRow);
 }
@@ -110,6 +114,7 @@ export async function listPiecesCaisse(
   const rows = await prisma.pieceComptable.findMany({
     where: { operationCaisseId },
     orderBy: { createdAt: "desc" },
+    omit: pieceListOmit,
   });
   return rows.map(toRow);
 }
@@ -122,6 +127,7 @@ export async function listArchives(filters?: {
   q?: string;
 }): Promise<ArchiveItem[]> {
   const rows = await prisma.pieceComptable.findMany({
+    omit: pieceListOmit,
     include: {
       facture: { include: { client: true } },
       operation: true,
@@ -331,6 +337,9 @@ export async function uploadPieceComptable(
       data: {
         nomOriginal: file.name,
         cheminStockage: stored.cheminStockage,
+        ...(stored.contenu
+          ? { contenu: Buffer.from(stored.contenu) as Uint8Array<ArrayBuffer> }
+          : {}),
         mimeType: stored.mimeType,
         tailleOctets: stored.tailleOctets,
         typeDocument: factureId ? "FACTURE" : typeDocument,

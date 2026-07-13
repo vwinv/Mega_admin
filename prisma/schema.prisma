@@ -283,6 +283,8 @@ model PieceComptable {
   id                String           @id @default(cuid())
   nomOriginal       String
   cheminStockage    String
+  /** Contenu binaire (stockage DB sur Vercel / serverless — disque local sinon) */
+  contenu           Bytes?
   mimeType          String?
   tailleOctets      Int?
   typeDocument      String           @default("FACTURE")

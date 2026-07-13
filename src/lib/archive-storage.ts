@@ -1,13 +1,7 @@
 import { mkdir, unlink, writeFile } from "fs/promises";
+import os from "os";
 import path from "path";
 import { randomUUID } from "crypto";
-
-/** Sur Render : monter un Persistent Disk et définir ARCHIVES_DIR=/var/data/archives */
-function getArchivesRoot(): string {
-  const fromEnv = process.env.ARCHIVES_DIR?.trim();
-  if (fromEnv) return path.resolve(fromEnv);
-  return path.join(process.cwd(), "data", "archives");
-}
 
 const MAX_BYTES = 15 * 1024 * 1024;
 
@@ -39,7 +33,41 @@ const MIME_BY_EXT: Record<string, string> = {
     "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
 };
 
+/**
+ * Sur Vercel / Lambda le FS est en lecture seule (sauf /tmp éphémère).
+ * On stocke alors le fichier en base (BYTEA). En local / Render avec disque : FS.
+ *
+ * ARCHIVES_STORAGE=db | fs  — forcer le mode
+ * ARCHIVES_DIR=...          — racine FS (sinon data/archives ou /tmp/mega-archives)
+ */
+export function usesDatabaseArchiveStorage(): boolean {
+  const forced = process.env.ARCHIVES_STORAGE?.trim().toLowerCase();
+  if (forced === "db") return true;
+  if (forced === "fs") return false;
+  return Boolean(
+    process.env.VERCEL ||
+      process.env.AWS_LAMBDA_FUNCTION_NAME ||
+      process.env.NETLIFY
+  );
+}
+
+function getArchivesRoot(): string {
+  const fromEnv = process.env.ARCHIVES_DIR?.trim();
+  if (fromEnv) return path.resolve(fromEnv);
+  if (process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME) {
+    return path.join(os.tmpdir(), "mega-archives");
+  }
+  return path.join(process.cwd(), "data", "archives");
+}
+
+export function isDbArchivePath(cheminStockage: string): boolean {
+  return cheminStockage.startsWith("db/");
+}
+
 export function resolveArchivePath(cheminStockage: string): string {
+  if (isDbArchivePath(cheminStockage)) {
+    throw new Error("Ce fichier est stocké en base, pas sur disque.");
+  }
   const root = getArchivesRoot();
   const resolved = path.resolve(root, cheminStockage);
   if (!resolved.startsWith(path.resolve(root))) {
@@ -48,10 +76,18 @@ export function resolveArchivePath(cheminStockage: string): string {
   return resolved;
 }
 
+export type StoredArchive = {
+  cheminStockage: string;
+  mimeType: string;
+  tailleOctets: number;
+  /** Présent uniquement en mode stockage DB */
+  contenu?: Uint8Array;
+};
+
 export async function saveArchiveFile(
   file: File,
   subdir: string
-): Promise<{ cheminStockage: string; mimeType: string; tailleOctets: number }> {
+): Promise<StoredArchive> {
   if (file.size <= 0) throw new Error("Fichier vide.");
   if (file.size > MAX_BYTES) {
     throw new Error("Fichier trop volumineux (maximum 15 Mo).");
@@ -66,21 +102,43 @@ export async function saveArchiveFile(
 
   const safeName = `${randomUUID()}${ext}`;
   const relativeDir = subdir.replace(/\\/g, "/").replace(/^\/+/, "");
-  const dir = path.join(getArchivesRoot(), relativeDir);
-  await mkdir(dir, { recursive: true });
+  const mimeType = file.type || MIME_BY_EXT[ext] || "application/octet-stream";
+  const buffer = new Uint8Array(await file.arrayBuffer());
 
-  const buffer = Buffer.from(await file.arrayBuffer());
+  if (usesDatabaseArchiveStorage()) {
+    return {
+      cheminStockage: `db/${relativeDir}/${safeName}`.replace(/\/+/g, "/"),
+      mimeType,
+      tailleOctets: file.size,
+      contenu: buffer,
+    };
+  }
+
+  const dir = path.join(getArchivesRoot(), relativeDir);
+  try {
+    await mkdir(dir, { recursive: true });
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    if (msg.includes("ENOENT") || msg.includes("EROFS") || msg.includes("EACCES")) {
+      throw new Error(
+        "Stockage fichiers indisponible sur ce serveur. Définissez ARCHIVES_STORAGE=db ou ARCHIVES_DIR writable."
+      );
+    }
+    throw e;
+  }
+
   const fullPath = path.join(dir, safeName);
   await writeFile(fullPath, buffer);
 
   return {
     cheminStockage: path.join(relativeDir, safeName).replace(/\\/g, "/"),
-    mimeType: file.type || MIME_BY_EXT[ext] || "application/octet-stream",
+    mimeType,
     tailleOctets: file.size,
   };
 }
 
 export async function deleteArchiveFile(cheminStockage: string): Promise<void> {
+  if (isDbArchivePath(cheminStockage)) return;
   try {
     await unlink(resolveArchivePath(cheminStockage));
   } catch {

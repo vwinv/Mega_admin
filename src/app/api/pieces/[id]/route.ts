@@ -1,6 +1,9 @@
 import { readFile } from "fs/promises";
 import { NextRequest, NextResponse } from "next/server";
-import { resolveArchivePath } from "@/lib/archive-storage";
+import {
+  isDbArchivePath,
+  resolveArchivePath,
+} from "@/lib/archive-storage";
 import { requireApiAuth, unauthorizedResponse } from "@/lib/api-auth";
 import { prisma } from "@/lib/prisma";
 
@@ -20,11 +23,22 @@ export async function GET(
   }
 
   try {
-    const fullPath = resolveArchivePath(piece.cheminStockage);
-    const buffer = await readFile(fullPath);
+    let body: Uint8Array;
+    if (piece.contenu && piece.contenu.length > 0) {
+      body = piece.contenu;
+    } else if (isDbArchivePath(piece.cheminStockage)) {
+      return NextResponse.json(
+        { error: "Fichier absent du stockage." },
+        { status: 404 }
+      );
+    } else {
+      const fullPath = resolveArchivePath(piece.cheminStockage);
+      body = new Uint8Array(await readFile(fullPath));
+    }
+
     const mime = piece.mimeType ?? "application/octet-stream";
 
-    return new NextResponse(buffer, {
+    return new NextResponse(Buffer.from(body), {
       headers: {
         "Content-Type": mime,
         "Content-Disposition": `inline; filename="${encodeURIComponent(piece.nomOriginal)}"`,
