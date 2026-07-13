@@ -19,6 +19,7 @@
     "db:status": "npx tsx scripts/db-status.ts",
     "db:backup": "npx tsx scripts/db-backup.ts",
     "db:seed-users": "npx tsx scripts/seed-users-only.ts",
+    "db:reset-passwords": "npx tsx scripts/reset-seed-passwords.ts",
     "db:backfill-pieces": "npx tsx scripts/backfill-numero-piece.ts --all",
     "db:fix-init-baseline": "prisma migrate resolve --rolled-back 20260707180000_init ; prisma migrate resolve --applied 20260707180000_init && prisma migrate deploy",
     "postinstall": "prisma generate"

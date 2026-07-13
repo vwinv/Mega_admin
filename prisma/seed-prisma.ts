@@ -4,7 +4,7 @@ import { PrismaClient } from "../src/generated/prisma/client";
 import { Pool, type PoolConfig } from "pg";
 
 function buildPoolConfig(connectionString: string): PoolConfig {
-  const needsSsl =
+  const isRemote =
     process.env.DATABASE_SSL === "true" ||
     /sslmode=require/i.test(connectionString) ||
     /\.render\.com/i.test(connectionString) ||
@@ -13,9 +13,22 @@ function buildPoolConfig(connectionString: string): PoolConfig {
     /\.vercel-storage\.com/i.test(connectionString) ||
     /\.prisma\.io/i.test(connectionString);
 
+  let url = connectionString;
+  if (isRemote) {
+    url = connectionString
+      .replace(/[?&]sslmode=[^&]*/gi, "")
+      .replace(/\?&/, "?")
+      .replace(/[?&]$/, "");
+  }
+
   return {
-    connectionString,
-    ...(needsSsl ? { ssl: { rejectUnauthorized: false } } : {}),
+    connectionString: url,
+    ...(isRemote
+      ? {
+          ssl: { rejectUnauthorized: false },
+          connectionTimeoutMillis: 15_000,
+        }
+      : {}),
   };
 }
 

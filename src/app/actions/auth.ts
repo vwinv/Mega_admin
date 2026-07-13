@@ -35,7 +35,8 @@ export async function login(
     if (!user.passwordHash) {
       return {
         ok: false,
-        error: "Ce compte utilise la connexion Google. Cliquez sur « Continuer avec Google ».",
+        error:
+          "Ce compte utilise la connexion Google. Cliquez sur « Continuer avec Google ».",
       };
     }
 
@@ -44,13 +45,27 @@ export async function login(
       return { ok: false, error: "Identifiant ou mot de passe incorrect." };
     }
 
-    await createSession({
-      id: user.id,
-      identifiant: user.identifiant,
-      nom: user.nom,
-      role: user.role,
-      email: user.email,
-    });
+    try {
+      await createSession({
+        id: user.id,
+        identifiant: user.identifiant,
+        nom: user.nom,
+        role: user.role,
+        email: user.email,
+      });
+    } catch (sessionError) {
+      console.error("createSession error:", sessionError);
+      const msg =
+        sessionError instanceof Error ? sessionError.message : String(sessionError);
+      if (msg.includes("AUTH_SECRET")) {
+        return {
+          ok: false,
+          error:
+            "AUTH_SECRET manquant ou trop court. Ajoutez-le dans .env / Vercel (min. 16 caractères).",
+        };
+      }
+      return { ok: false, error: `Erreur session : ${msg}` };
+    }
 
     await logAudit({
       userId: user.id,
@@ -64,10 +79,10 @@ export async function login(
     return { ok: true };
   } catch (error) {
     console.error("login error:", error);
+    const msg = error instanceof Error ? error.message : String(error);
     return {
       ok: false,
-      error:
-        "Erreur de connexion. Relancez : npm run db:migrate && npm run db:seed-users",
+      error: `Erreur de connexion : ${msg}`,
     };
   }
 }

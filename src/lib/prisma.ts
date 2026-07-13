@@ -5,6 +5,7 @@ import { Pool, type PoolConfig } from "pg";
 
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
+  prismaPool: Pool | undefined;
 };
 
 function getDatabaseUrl(): string {
@@ -18,7 +19,7 @@ function getDatabaseUrl(): string {
 }
 
 function buildPoolConfig(connectionString: string): PoolConfig {
-  const needsSsl =
+  const isRemote =
     process.env.DATABASE_SSL === "true" ||
     /sslmode=require/i.test(connectionString) ||
     /\.render\.com/i.test(connectionString) ||
@@ -27,34 +28,34 @@ function buildPoolConfig(connectionString: string): PoolConfig {
     /\.vercel-storage\.com/i.test(connectionString) ||
     /\.prisma\.io/i.test(connectionString);
 
+  let url = connectionString;
+  if (isRemote) {
+    url = connectionString
+      .replace(/[?&]sslmode=[^&]*/gi, "")
+      .replace(/\?&/, "?")
+      .replace(/[?&]$/, "");
+  }
+
   return {
-    connectionString,
-    ...(needsSsl ? { ssl: { rejectUnauthorized: false } } : {}),
+    connectionString: url,
+    max: 5,
+    idleTimeoutMillis: 20_000,
+    connectionTimeoutMillis: 20_000,
+    ...(isRemote ? { ssl: { rejectUnauthorized: false } } : {}),
   };
 }
 
 function createPrismaClient(): PrismaClient {
   const pool = new Pool(buildPoolConfig(getDatabaseUrl()));
+  globalForPrisma.prismaPool = pool;
   return new PrismaClient({ adapter: new PrismaPg(pool) });
 }
 
-function getPrismaClient(): PrismaClient {
-  if (globalForPrisma.prisma) return globalForPrisma.prisma;
+export const prisma = globalForPrisma.prisma ?? createPrismaClient();
 
-  const client = createPrismaClient();
-  // Cache le client (dev + prod serverless Vercel)
-  globalForPrisma.prisma = client;
-  return client;
+if (!globalForPrisma.prisma) {
+  globalForPrisma.prisma = prisma;
 }
-
-/** Client lazy : le build Next n'exige pas une DB joignable au chargement du module. */
-export const prisma = new Proxy({} as PrismaClient, {
-  get(_target, prop, receiver) {
-    const client = getPrismaClient();
-    const value = Reflect.get(client, prop, receiver);
-    return typeof value === "function" ? value.bind(client) : value;
-  },
-});
 
 export function getDatabaseKind(): "postgresql" {
   return "postgresql";
