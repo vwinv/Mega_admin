@@ -1,0 +1,25 @@
+# Base PostgreSQL pour MEGA SN SARL
+# Démarrer : docker compose up -d
+# Puis : npm run db:setup
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: mega-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: mega
+      POSTGRES_PASSWORD: mega_secret
+      POSTGRES_DB: mega_finance
+    ports:
+      - "5432:5432"
+    volumes:
+      - mega_pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mega -d mega_finance"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  mega_pg_data:

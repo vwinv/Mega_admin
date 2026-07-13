@@ -1,0 +1,303 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  ADMIN
+  CEO
+  COMPTABLE
+  VALIDATEUR
+  LECTURE_SEULE
+}
+
+model User {
+  id           String   @id @default(cuid())
+  identifiant  String   @unique
+  nom          String
+  email        String?  @unique
+  googleId     String?  @unique
+  passwordHash String?
+  role         Role     @default(COMPTABLE)
+  actif        Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model Categorie {
+  id               String            @id @default(cuid())
+  nom              String            @unique
+  sens             String
+  codeCompte       String
+  intituleCompte   String
+  operations       Operation[]
+  operationsCaisse OperationCaisse[]
+  budgetLignes     BudgetLigne[]
+}
+
+model CodeBudgetaire {
+  id               String            @id @default(cuid())
+  code             String            @unique
+  beneficiaire     String
+  enveloppe        Int               @default(0)
+  operations       Operation[]
+  operationsCaisse OperationCaisse[]
+}
+
+model Operation {
+  id               String          @id @default(cuid())
+  date             DateTime?
+  numeroPiece      String?
+  libelle          String
+  categorieId      String
+  categorie        Categorie       @relation(fields: [categorieId], references: [id])
+  codeBudgetaireId String?
+  codeBudgetaire   CodeBudgetaire? @relation(fields: [codeBudgetaireId], references: [id])
+  factureId        String?
+  facture          Facture?        @relation(fields: [factureId], references: [id], onDelete: SetNull)
+  modePaiement     String?
+  entree           Int?
+  sortie           Int?
+  /** 0 = hors TVA ; ex. 0.18 = TVA 18 % (montant saisi = TTC) */
+  tauxTVA          Float           @default(0)
+  observations     String?
+  validePar        String?
+  statutApprobation String   @default("APPROUVE")
+  demandePar       String?
+  demandeAt        DateTime?
+  approuvePar      String?
+  approuveAt       DateTime?
+  motifRefus       String?
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+  piecesComptables PieceComptable[]
+
+  @@index([date])
+  @@index([categorieId])
+  @@index([statutApprobation])
+  @@index([factureId])
+  @@index([numeroPiece])
+}
+
+model OperationCaisse {
+  id               String          @id @default(cuid())
+  date             DateTime?
+  numeroPiece      String?
+  libelle          String
+  categorieId      String
+  categorie        Categorie       @relation(fields: [categorieId], references: [id])
+  codeBudgetaireId String?
+  codeBudgetaire   CodeBudgetaire? @relation(fields: [codeBudgetaireId], references: [id])
+  entree           Int?
+  sortie           Int?
+  observations     String?
+  validePar        String?
+  statutApprobation String   @default("APPROUVE")
+  demandePar       String?
+  demandeAt        DateTime?
+  approuvePar      String?
+  approuveAt       DateTime?
+  motifRefus       String?
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+  piecesComptables PieceComptable[]
+
+  @@index([date])
+  @@index([categorieId])
+  @@index([statutApprobation])
+  @@index([numeroPiece])
+}
+
+model Parametre {
+  id                    Int    @id @default(1)
+  entreprise            String
+  devise                String @default("FCFA")
+  annee                 Int
+  soldeInitialBanque    Int
+  soldeInitialCaisse    Int
+  plafondCaisse         Int    @default(300000)
+  seuilDoubleValidation Int    @default(500000)
+  tauxTVA               Float  @default(0.18)
+  emailContact          String @default("contact@mega-sn.com")
+  telephoneContact      String @default("78 450 40 52")
+}
+
+model ClientFacturation {
+  id        String    @id @default(cuid())
+  nom       String
+  email     String?
+  telephone String?
+  adresse   String?
+  devis     Devis[]
+  factures  Facture[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+model Devis {
+  id        String       @id @default(cuid())
+  numero    String       @unique
+  titre     String
+  date      DateTime
+  clientId  String
+  client    ClientFacturation @relation(fields: [clientId], references: [id])
+  statut    String       @default("BROUILLON")
+  lignes    DevisLigne[]
+  facture   Facture?
+  notes     String?
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  @@index([clientId])
+  @@index([date])
+}
+
+model DevisLigne {
+  id          String  @id @default(cuid())
+  devisId     String
+  devis       Devis   @relation(fields: [devisId], references: [id], onDelete: Cascade)
+  ordre       Int
+  designation String
+  details     String?
+  duree       String?
+  prix        Int
+  styleAccent Boolean @default(false)
+}
+
+model Facture {
+  id            String       @id @default(cuid())
+  numero        String       @unique
+  titre         String?
+  date          DateTime
+  clientId      String
+  client        ClientFacturation @relation(fields: [clientId], references: [id])
+  devisId       String?      @unique
+  devis         Devis?       @relation(fields: [devisId], references: [id])
+  statut        String       @default("BROUILLON")
+  lignes        FactureLigne[]
+  reliquat      Int          @default(0)
+  reliquatLabel String       @default("Reliquat")
+  tauxTVA       Float        @default(0.18)
+  montantPaye   Int          @default(0)
+  datePaiement  DateTime?
+  operationId   String?
+  statutApprobation String   @default("APPROUVE")
+  demandePar    String?
+  demandeAt     DateTime?
+  approuvePar   String?
+  approuveAt    DateTime?
+  motifRefus    String?
+  notes         String?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  operations    Operation[]
+  piecesComptables PieceComptable[]
+
+  @@index([clientId])
+  @@index([date])
+  @@index([statut])
+  @@index([statutApprobation])
+}
+
+model FactureLigne {
+  id          String  @id @default(cuid())
+  factureId   String
+  facture     Facture @relation(fields: [factureId], references: [id], onDelete: Cascade)
+  ordre       Int
+  designation String
+  details     String?
+  prix        Int
+  styleAccent Boolean @default(false)
+}
+
+model EcheanceImpot {
+  id           String    @id @default(cuid())
+  echeance     DateTime
+  impot        String
+  periode      String
+  montantDu    Int
+  datePaiement DateTime?
+  statut       String
+}
+
+model BudgetLigne {
+  id          String    @id @default(cuid())
+  categorieId String
+  categorie   Categorie @relation(fields: [categorieId], references: [id])
+  mois        Int
+  montant     Int       @default(0)
+
+  @@unique([categorieId, mois])
+}
+
+model RapprochementBancaire {
+  id          String @id @default(cuid())
+  annee       Int
+  mois        Int
+  soldeReleve Int
+
+  @@unique([annee, mois])
+}
+
+model ChecklistItem {
+  id      String @id @default(cuid())
+  annee   Int
+  mois    Int
+  tacheId Int
+  statut  String @default("À faire")
+
+  @@unique([annee, mois, tacheId])
+}
+
+model TvaDeclaration {
+  id            String @id @default(cuid())
+  annee         Int
+  mois          Int
+  collectee     Int    @default(0)
+  deductible    Int    @default(0)
+  creditReporte Int    @default(0)
+
+  @@unique([annee, mois])
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  userNom   String
+  action    String
+  entity    String
+  entityId  String?
+  details   String?
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([entity])
+  @@index([userId])
+}
+
+model PieceComptable {
+  id                String           @id @default(cuid())
+  nomOriginal       String
+  cheminStockage    String
+  mimeType          String?
+  tailleOctets      Int?
+  typeDocument      String           @default("FACTURE")
+  libelle           String?
+  factureId         String?
+  facture           Facture?         @relation(fields: [factureId], references: [id], onDelete: Cascade)
+  operationId       String?
+  operation         Operation?       @relation(fields: [operationId], references: [id], onDelete: Cascade)
+  operationCaisseId String?
+  operationCaisse   OperationCaisse? @relation(fields: [operationCaisseId], references: [id], onDelete: Cascade)
+  uploadedBy        String?
+  createdAt         DateTime         @default(now())
+
+  @@index([factureId])
+  @@index([operationId])
+  @@index([operationCaisseId])
+  @@index([createdAt])
+}
