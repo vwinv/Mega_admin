@@ -1,6 +1,8 @@
 "use client";
 
+import { Suspense } from "react";
 import { usePathname } from "next/navigation";
+import { NavigationProgress } from "@/components/NavigationProgress";
 import { PermissionsProvider } from "@/components/PermissionsProvider";
 import { Sidebar } from "@/components/Sidebar";
 import { UserSessionBar } from "@/components/UserSessionBar";
@@ -23,6 +25,9 @@ export function AppShell({
 
   return (
     <>
+      <Suspense fallback={null}>
+        <NavigationProgress />
+      </Suspense>
       <Sidebar user={user} />
       <div className="flex min-w-0 flex-1 flex-col pt-14 lg:pt-0">
         {user && (

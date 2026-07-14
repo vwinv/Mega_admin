@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { prisma } from "@/lib/prisma";
 import { OperationRow } from "@/lib/types";
 
@@ -50,7 +51,7 @@ function serializeOp(
   };
 }
 
-export async function getReferenceData() {
+export const getReferenceData = cache(async () => {
   const [categories, codesBudgetaires, params] = await Promise.all([
     prisma.categorie.findMany({
       orderBy: [{ sens: "asc" }, { nom: "asc" }],
@@ -64,7 +65,7 @@ export async function getReferenceData() {
     codesBudgetaires,
     params,
   };
-}
+});
 
 export async function getJournalOperations(): Promise<OperationRow[]> {
   const ops = await prisma.operation.findMany({

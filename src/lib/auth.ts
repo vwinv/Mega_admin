@@ -1,6 +1,7 @@
 import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
 import bcrypt from "bcryptjs";
+import { cache } from "react";
 import { prisma } from "@/lib/prisma";
 import {
   Role,
@@ -67,7 +68,12 @@ export async function destroySession(): Promise<void> {
   jar.delete(SESSION_COOKIE);
 }
 
-export async function getSession(): Promise<SessionUser | null> {
+/**
+ * Session depuis le JWT uniquement (pas de round-trip DB).
+ * Mis en cache pour la durée de la requête React — critique pour la navigation.
+ * La vérification `actif` se fait sur les actions d'écriture.
+ */
+export const getSession = cache(async (): Promise<SessionUser | null> => {
   const jar = await cookies();
   const token = jar.get(SESSION_COOKIE)?.value;
   if (!token) return null;
@@ -82,23 +88,34 @@ export async function getSession(): Promise<SessionUser | null> {
 
     if (!id || !role || !nom || !identifiant) return null;
 
-    const user = await prisma.user.findUnique({
-      where: { id },
-      select: { id: true, identifiant: true, nom: true, role: true, email: true, actif: true },
-    });
-
-    if (!user || !user.actif) return null;
-
-    return {
-      id: user.id,
-      identifiant: user.identifiant,
-      nom: user.nom,
-      role: user.role as Role,
-      email: user.email,
-    };
+    return { id, identifiant, nom, role, email };
   } catch {
     return null;
   }
+});
+
+async function assertUserActif(session: SessionUser): Promise<SessionUser> {
+  const user = await prisma.user.findUnique({
+    where: { id: session.id },
+    select: {
+      id: true,
+      identifiant: true,
+      nom: true,
+      role: true,
+      email: true,
+      actif: true,
+    },
+  });
+  if (!user || !user.actif) {
+    throw new Error("Compte désactivé. Contactez l'administrateur.");
+  }
+  return {
+    id: user.id,
+    identifiant: user.identifiant,
+    nom: user.nom,
+    role: user.role as Role,
+    email: user.email,
+  };
 }
 
 export async function verifySessionToken(
@@ -127,7 +144,7 @@ export async function requireAuth(): Promise<SessionUser> {
 }
 
 export async function requireWrite(): Promise<SessionUser> {
-  const session = await requireAuth();
+  const session = await assertUserActif(await requireAuth());
   if (!canWrite(session.role)) {
     throw new Error("Accès refusé : votre profil est en lecture seule.");
   }
@@ -135,7 +152,7 @@ export async function requireWrite(): Promise<SessionUser> {
 }
 
 export async function requireImport(): Promise<SessionUser> {
-  const session = await requireAuth();
+  const session = await assertUserActif(await requireAuth());
   if (!canImport(session.role)) {
     throw new Error("Accès refusé : import réservé aux administrateurs et comptables.");
   }
@@ -143,7 +160,7 @@ export async function requireImport(): Promise<SessionUser> {
 }
 
 export async function requireManageUsers(): Promise<SessionUser> {
-  const session = await requireAuth();
+  const session = await assertUserActif(await requireAuth());
   if (!canManageUsers(session.role)) {
     throw new Error("Accès refusé : gestion des utilisateurs réservée à l'administrateur.");
   }
@@ -151,7 +168,7 @@ export async function requireManageUsers(): Promise<SessionUser> {
 }
 
 export async function requireManageParametres(): Promise<SessionUser> {
-  const session = await requireAuth();
+  const session = await assertUserActif(await requireAuth());
   if (!canManageParametres(session.role)) {
     throw new Error("Accès refusé : paramètres réservés à l'administrateur.");
   }
@@ -159,7 +176,7 @@ export async function requireManageParametres(): Promise<SessionUser> {
 }
 
 export async function requireManageCategories(): Promise<SessionUser> {
-  const session = await requireAuth();
+  const session = await assertUserActif(await requireAuth());
   if (!canManageCategories(session.role)) {
     throw new Error("Accès refusé : gestion des catégories non autorisée.");
   }
@@ -167,7 +184,7 @@ export async function requireManageCategories(): Promise<SessionUser> {
 }
 
 export async function requireValidate(): Promise<SessionUser> {
-  const session = await requireAuth();
+  const session = await assertUserActif(await requireAuth());
   if (!canValidate(session.role)) {
     throw new Error("Accès refusé : vous ne pouvez pas valider cette opération.");
   }

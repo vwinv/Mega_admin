@@ -127,13 +127,45 @@ export async function listArchives(filters?: {
   q?: string;
 }): Promise<ArchiveItem[]> {
   const rows = await prisma.pieceComptable.findMany({
-    omit: pieceListOmit,
-    include: {
-      facture: { include: { client: true } },
-      operation: true,
-      operationCaisse: true,
+    select: {
+      id: true,
+      nomOriginal: true,
+      mimeType: true,
+      tailleOctets: true,
+      typeDocument: true,
+      libelle: true,
+      uploadedBy: true,
+      createdAt: true,
+      factureId: true,
+      operationId: true,
+      operationCaisseId: true,
+      facture: {
+        select: {
+          id: true,
+          numero: true,
+          date: true,
+          client: { select: { nom: true } },
+        },
+      },
+      operation: {
+        select: {
+          id: true,
+          date: true,
+          numeroPiece: true,
+          libelle: true,
+        },
+      },
+      operationCaisse: {
+        select: {
+          id: true,
+          date: true,
+          numeroPiece: true,
+          libelle: true,
+        },
+      },
     },
     orderBy: { createdAt: "desc" },
+    take: 500,
   });
 
   const q = (filters?.q ?? "").trim().toLowerCase();
@@ -229,12 +261,20 @@ export async function listArchives(filters?: {
 export async function listFacturesArchives(): Promise<FactureArchiveRow[]> {
   const { computeTotauxFacture } = await import("@/lib/facturation");
   const rows = await prisma.facture.findMany({
-    include: {
-      client: true,
+    select: {
+      id: true,
+      numero: true,
+      date: true,
+      statut: true,
+      reliquat: true,
+      tauxTVA: true,
+      montantPaye: true,
+      client: { select: { nom: true } },
       lignes: { select: { prix: true } },
       _count: { select: { piecesComptables: true } },
     },
     orderBy: { date: "desc" },
+    take: 300,
   });
 
   return rows.map((f) => {

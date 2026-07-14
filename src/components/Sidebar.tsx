@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Archive,
   BarChart3,
@@ -123,6 +123,12 @@ function NavContent({
   role: Role | null;
 }) {
   const pathname = usePathname();
+  const [pendingHref, setPendingHref] = useState<string | null>(null);
+
+  // Reset pending indicator once the new page has mounted
+  useEffect(() => {
+    setPendingHref(null);
+  }, [pathname]);
 
   return (
     <>
@@ -141,25 +147,32 @@ function NavContent({
                   item.href === "/"
                     ? pathname === "/"
                     : pathname.startsWith(item.href);
+                const pending = pendingHref === item.href;
                 const Icon = item.icon;
 
                 return (
                   <li key={item.href}>
                     <Link
                       href={item.href}
-                      onClick={onNavigate}
-                      className={`group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-all duration-200 ${
+                      prefetch
+                      onClick={() => {
+                        if (!active) setPendingHref(item.href);
+                        onNavigate?.();
+                      }}
+                      className={`group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-all duration-150 ${
                         active
                           ? "bg-gradient-to-r from-mega-500 to-mega-600 font-medium text-white shadow-md shadow-mega-900/25"
-                          : "text-slate-400 hover:bg-white/5 hover:text-white"
+                          : pending
+                            ? "bg-white/10 font-medium text-white"
+                            : "text-slate-400 hover:bg-white/5 hover:text-white"
                       }`}
                     >
                       <Icon
                         className={`h-4 w-4 shrink-0 ${
-                          active
+                          active || pending
                             ? "text-white"
                             : "text-slate-500 group-hover:text-mega-400"
-                        }`}
+                        } ${pending ? "animate-pulse" : ""}`}
                         strokeWidth={active ? 2.2 : 2}
                       />
                       {item.label}

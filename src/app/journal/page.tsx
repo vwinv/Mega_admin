@@ -5,12 +5,12 @@ import { getJournalOperations, getReferenceData } from "@/lib/data";
 export const dynamic = "force-dynamic";
 
 export default async function JournalPage() {
-  const { categories, codesBudgetaires, params } = await getReferenceData();
+  const [{ categories, codesBudgetaires, params }, operations] =
+    await Promise.all([getReferenceData(), getJournalOperations()]);
+
   if (!params) {
     return <p>Base non initialisée. Lancez npm run db:seed</p>;
   }
-
-  const operations = await getJournalOperations();
 
   return (
     <div>
