@@ -2,6 +2,7 @@
 
 import { FormEvent, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { upload } from "@vercel/blob/client";
 import {
   deletePieceComptable,
   listPiecesCaisse,
@@ -10,6 +11,10 @@ import {
   uploadPieceComptable,
   type PieceComptableRow,
 } from "@/app/actions/pieces-comptables";
+import {
+  buildBlobPathname,
+  MAX_ARCHIVE_BYTES,
+} from "@/lib/archive-client";
 import { formatFileSize } from "@/lib/format";
 import { Alert, Button, Card, Input } from "@/components/ui";
 
@@ -22,17 +27,21 @@ export function PiecesComptablesPanel({
   pieces,
   canEdit,
   compact = false,
+  useBlobUpload = true,
   ...link
 }: {
   pieces: PieceComptableRow[];
   canEdit: boolean;
   compact?: boolean;
+  /** Upload direct Vercel Blob (requis en prod pour PDF > ~2–3 Mo) */
+  useBlobUpload?: boolean;
 } & EntityLink) {
   const router = useRouter();
   const fileRef = useRef<HTMLInputElement>(null);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [progress, setProgress] = useState<number | null>(null);
   const [libelle, setLibelle] = useState("");
   const [items, setItems] = useState<PieceComptableRow[]>(pieces);
   const [loadingList, setLoadingList] = useState(false);
@@ -68,32 +77,137 @@ export function PiecesComptablesPanel({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [entityKey]);
 
+  async function uploadViaBlob(file: File): Promise<{ ok: true; id: string } | { ok: false; error: string }> {
+    const subdir = link.factureId
+      ? `factures/${link.factureId}`
+      : link.operationId
+        ? `operations/${link.operationId}`
+        : `caisse/${link.operationCaisseId}`;
+
+    const pathname = buildBlobPathname(subdir, file.name);
+    const clientPayload = JSON.stringify({
+      factureId: link.factureId ?? null,
+      operationId: link.operationId ?? null,
+      operationCaisseId: link.operationCaisseId ?? null,
+      nomOriginal: file.name,
+      libelle: libelle.trim() || null,
+    });
+
+    const blob = await upload(pathname, file, {
+      access: "private",
+      handleUploadUrl: "/api/pieces/blob-upload",
+      clientPayload,
+      multipart: file.size > 1.5 * 1024 * 1024,
+      contentType: file.type || undefined,
+      onUploadProgress: ({ percentage }) => {
+        setProgress(Math.round(percentage));
+      },
+    });
+
+    const res = await fetch("/api/pieces/register", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        url: blob.url,
+        pathname: blob.pathname,
+        contentType: blob.contentType,
+        size: file.size,
+        nomOriginal: file.name,
+        libelle: libelle.trim() || null,
+        factureId: link.factureId ?? null,
+        operationId: link.operationId ?? null,
+        operationCaisseId: link.operationCaisseId ?? null,
+      }),
+    });
+
+    const data = (await res.json()) as
+      | { ok: true; id: string }
+      | { ok: false; error: string };
+    if (!res.ok || !data.ok) {
+      return {
+        ok: false,
+        error:
+          !data.ok && "error" in data
+            ? data.error
+            : `Échec enregistrement (${res.status}).`,
+      };
+    }
+    return data;
+  }
+
   async function doUpload(file: File) {
     setError(null);
     setSuccess(null);
-    setUploading(true);
-    const fd = new FormData();
-    if (link.factureId) fd.set("factureId", link.factureId);
-    if (link.operationId) fd.set("operationId", link.operationId);
-    if (link.operationCaisseId)
-      fd.set("operationCaisseId", link.operationCaisseId);
-    fd.set("file", file);
-    if (libelle.trim()) fd.set("libelle", libelle.trim());
+    setProgress(null);
 
-    const result = await uploadPieceComptable(fd);
-    setUploading(false);
-
-    if (!result.ok) {
-      setError(result.error);
+    if (file.size > MAX_ARCHIVE_BYTES) {
+      setError("Fichier trop volumineux (maximum 15 Mo).");
       return false;
     }
 
-    if (fileRef.current) fileRef.current.value = "";
-    setLibelle("");
-    setSuccess(`« ${file.name} » bien archivé.`);
-    await reloadPieces();
-    router.refresh();
-    return true;
+    setUploading(true);
+    try {
+      let result: { ok: true; id: string } | { ok: false; error: string };
+
+      if (useBlobUpload) {
+        try {
+          result = await uploadViaBlob(file);
+        } catch (blobErr) {
+          // Fallback local / si Blob indisponible (dev sans token)
+          const msg =
+            blobErr instanceof Error ? blobErr.message : String(blobErr);
+          if (
+            msg.includes("BLOB") ||
+            msg.includes("503") ||
+            msg.includes("token") ||
+            msg.includes("Failed to fetch")
+          ) {
+            const fd = new FormData();
+            if (link.factureId) fd.set("factureId", link.factureId);
+            if (link.operationId) fd.set("operationId", link.operationId);
+            if (link.operationCaisseId)
+              fd.set("operationCaisseId", link.operationCaisseId);
+            fd.set("file", file);
+            if (libelle.trim()) fd.set("libelle", libelle.trim());
+            result = await uploadPieceComptable(fd);
+          } else {
+            throw blobErr;
+          }
+        }
+      } else {
+        const fd = new FormData();
+        if (link.factureId) fd.set("factureId", link.factureId);
+        if (link.operationId) fd.set("operationId", link.operationId);
+        if (link.operationCaisseId)
+          fd.set("operationCaisseId", link.operationCaisseId);
+        fd.set("file", file);
+        if (libelle.trim()) fd.set("libelle", libelle.trim());
+        result = await uploadPieceComptable(fd);
+      }
+
+      if (!result.ok) {
+        setError(result.error);
+        return false;
+      }
+
+      if (fileRef.current) fileRef.current.value = "";
+      setLibelle("");
+      setSuccess(`« ${file.name} » bien archivé.`);
+      await reloadPieces();
+      router.refresh();
+      return true;
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Échec de l'upload.";
+      setError(
+        msg.includes("too large") || msg.includes("Payload")
+          ? "Fichier trop volumineux pour le serveur. Réessayez (PDF < 10 Mo recommandé)."
+          : msg
+      );
+      return false;
+    } finally {
+      setUploading(false);
+      setProgress(null);
+    }
   }
 
   async function handleUpload(e: FormEvent) {
@@ -185,7 +299,10 @@ export function PiecesComptablesPanel({
             />
           </div>
           {uploading && (
-            <p className="text-sm font-medium text-mega-800">Envoi en cours…</p>
+            <p className="text-sm font-medium text-mega-800">
+              Envoi en cours…
+              {progress != null ? ` ${progress} %` : ""}
+            </p>
           )}
           <Button type="submit" variant="secondary" disabled={uploading}>
             {uploading ? "Envoi…" : "Joindre un autre document"}

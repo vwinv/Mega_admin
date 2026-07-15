@@ -5,6 +5,12 @@
   "scripts": {
     "dev": "next dev --webpack",
     "dev:turbo": "next dev",
+    "local:start": "bash scripts/dev-server.sh start",
+    "local:stop": "bash scripts/dev-server.sh stop",
+    "local:restart": "bash scripts/dev-server.sh restart",
+    "local:status": "bash scripts/dev-server.sh status",
+    "local:watch": "bash scripts/dev-server.sh watch",
+    "local:logs": "bash scripts/dev-server.sh logs",
     "build": "next build --webpack",
     "vercel-build": "prisma migrate deploy && next build",
     "start": "next start",
@@ -30,6 +36,7 @@
   "dependencies": {
     "@prisma/adapter-pg": "^7.8.0",
     "@prisma/client": "^7.8.0",
+    "@vercel/blob": "^2.6.1",
     "bcryptjs": "^3.0.3",
     "dotenv": "^17.4.2",
     "jose": "^6.2.3",

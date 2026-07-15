@@ -1,9 +1,10 @@
+import { del, get } from "@vercel/blob";
 import { mkdir, unlink, writeFile } from "fs/promises";
 import os from "os";
 import path from "path";
 import { randomUUID } from "crypto";
 
-const MAX_BYTES = 15 * 1024 * 1024;
+export const MAX_ARCHIVE_BYTES = 15 * 1024 * 1024;
 
 const ALLOWED_EXT = new Set([
   ".pdf",
@@ -33,14 +34,16 @@ const MIME_BY_EXT: Record<string, string> = {
     "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
 };
 
+export function hasBlobStorage(): boolean {
+  return Boolean(process.env.BLOB_READ_WRITE_TOKEN?.trim());
+}
+
 /**
- * Sur Vercel / Lambda le FS est en lecture seule (sauf /tmp éphémère).
- * On stocke alors le fichier en base (BYTEA). En local / Render avec disque : FS.
- *
- * ARCHIVES_STORAGE=db | fs  — forcer le mode
- * ARCHIVES_DIR=...          — racine FS (sinon data/archives ou /tmp/mega-archives)
+ * Sur Vercel sans Blob : BYTEA (lourd, limite body ~4,5 Mo).
+ * En local : disque data/archives.
  */
 export function usesDatabaseArchiveStorage(): boolean {
+  if (hasBlobStorage()) return false;
   const forced = process.env.ARCHIVES_STORAGE?.trim().toLowerCase();
   if (forced === "db") return true;
   if (forced === "fs") return false;
@@ -60,13 +63,26 @@ function getArchivesRoot(): string {
   return path.join(process.cwd(), "data", "archives");
 }
 
+export function isBlobArchivePath(cheminStockage: string): boolean {
+  return (
+    cheminStockage.startsWith("https://") ||
+    cheminStockage.startsWith("blob:")
+  );
+}
+
 export function isDbArchivePath(cheminStockage: string): boolean {
   return cheminStockage.startsWith("db/");
 }
 
+export function blobUrlFromPath(cheminStockage: string): string {
+  return cheminStockage.startsWith("blob:")
+    ? cheminStockage.slice("blob:".length)
+    : cheminStockage;
+}
+
 export function resolveArchivePath(cheminStockage: string): string {
-  if (isDbArchivePath(cheminStockage)) {
-    throw new Error("Ce fichier est stocké en base, pas sur disque.");
+  if (isDbArchivePath(cheminStockage) || isBlobArchivePath(cheminStockage)) {
+    throw new Error("Ce fichier n'est pas stocké sur disque local.");
   }
   const root = getArchivesRoot();
   const resolved = path.resolve(root, cheminStockage);
@@ -80,35 +96,62 @@ export type StoredArchive = {
   cheminStockage: string;
   mimeType: string;
   tailleOctets: number;
-  /** Présent uniquement en mode stockage DB */
   contenu?: Uint8Array;
 };
 
-export async function saveArchiveFile(
-  file: File,
-  subdir: string
-): Promise<StoredArchive> {
+export function validateArchiveFileMeta(file: {
+  name: string;
+  size: number;
+}): { ext: string; mimeType: string } {
   if (file.size <= 0) throw new Error("Fichier vide.");
-  if (file.size > MAX_BYTES) {
+  if (file.size > MAX_ARCHIVE_BYTES) {
     throw new Error("Fichier trop volumineux (maximum 15 Mo).");
   }
-
   const ext = path.extname(file.name).toLowerCase();
   if (!ALLOWED_EXT.has(ext)) {
     throw new Error(
       "Format non autorisé. Formats acceptés : PDF, images, Word, Excel."
     );
   }
+  return {
+    ext,
+    mimeType: MIME_BY_EXT[ext] || "application/octet-stream",
+  };
+}
 
+/** Chemin Blob recommandé (client upload). */
+export function buildBlobPathname(subdir: string, originalName: string): string {
+  const ext = path.extname(originalName).toLowerCase() || ".bin";
+  const relativeDir = subdir.replace(/\\/g, "/").replace(/^\/+/, "");
+  return `archives/${relativeDir}/${randomUUID()}${ext}`.replace(/\/+/g, "/");
+}
+
+export const ALLOWED_ARCHIVE_CONTENT_TYPES = [
+  "application/pdf",
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/gif",
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  "application/vnd.ms-excel",
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "application/octet-stream",
+];
+
+export async function saveArchiveFile(
+  file: File,
+  subdir: string
+): Promise<StoredArchive> {
+  const { ext, mimeType } = validateArchiveFileMeta(file);
   const safeName = `${randomUUID()}${ext}`;
   const relativeDir = subdir.replace(/\\/g, "/").replace(/^\/+/, "");
-  const mimeType = file.type || MIME_BY_EXT[ext] || "application/octet-stream";
   const buffer = new Uint8Array(await file.arrayBuffer());
 
   if (usesDatabaseArchiveStorage()) {
     return {
       cheminStockage: `db/${relativeDir}/${safeName}`.replace(/\/+/g, "/"),
-      mimeType,
+      mimeType: file.type || mimeType,
       tailleOctets: file.size,
       contenu: buffer,
     };
@@ -119,9 +162,13 @@ export async function saveArchiveFile(
     await mkdir(dir, { recursive: true });
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
-    if (msg.includes("ENOENT") || msg.includes("EROFS") || msg.includes("EACCES")) {
+    if (
+      msg.includes("ENOENT") ||
+      msg.includes("EROFS") ||
+      msg.includes("EACCES")
+    ) {
       throw new Error(
-        "Stockage fichiers indisponible sur ce serveur. Définissez ARCHIVES_STORAGE=db ou ARCHIVES_DIR writable."
+        "Stockage fichiers indisponible. Configurez Vercel Blob (BLOB_READ_WRITE_TOKEN) ou ARCHIVES_DIR."
       );
     }
     throw e;
@@ -132,13 +179,57 @@ export async function saveArchiveFile(
 
   return {
     cheminStockage: path.join(relativeDir, safeName).replace(/\\/g, "/"),
-    mimeType,
+    mimeType: file.type || mimeType,
     tailleOctets: file.size,
   };
 }
 
+export async function readArchiveBytes(
+  cheminStockage: string,
+  contenu: Uint8Array | null | undefined
+): Promise<Uint8Array> {
+  if (contenu && contenu.length > 0) {
+    return contenu;
+  }
+  if (isBlobArchivePath(cheminStockage)) {
+    const url = blobUrlFromPath(cheminStockage);
+    const result = await get(url, { access: "private" });
+    if (!result || result.statusCode !== 200 || !result.stream) {
+      throw new Error("Fichier Blob introuvable.");
+    }
+    const reader = result.stream.getReader();
+    const chunks: Uint8Array[] = [];
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      if (value) chunks.push(value);
+    }
+    const total = chunks.reduce((n, c) => n + c.length, 0);
+    const out = new Uint8Array(total);
+    let offset = 0;
+    for (const c of chunks) {
+      out.set(c, offset);
+      offset += c.length;
+    }
+    return out;
+  }
+  if (isDbArchivePath(cheminStockage)) {
+    throw new Error("Fichier absent du stockage.");
+  }
+  const { readFile } = await import("fs/promises");
+  return new Uint8Array(await readFile(resolveArchivePath(cheminStockage)));
+}
+
 export async function deleteArchiveFile(cheminStockage: string): Promise<void> {
   if (isDbArchivePath(cheminStockage)) return;
+  if (isBlobArchivePath(cheminStockage)) {
+    try {
+      await del(blobUrlFromPath(cheminStockage));
+    } catch {
+      // déjà absent
+    }
+    return;
+  }
   try {
     await unlink(resolveArchivePath(cheminStockage));
   } catch {
