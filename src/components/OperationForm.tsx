@@ -26,7 +26,7 @@ type Props = {
   onSubmit: (
     input: OperationInput
   ) => Promise<
-    { ok: true; message?: string } | { ok: false; error: string }
+    { ok: true; id?: string; message?: string } | { ok: false; error: string }
   >;
   onCancel?: () => void;
   inModal?: boolean;

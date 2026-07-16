@@ -44,7 +44,7 @@ function toDbFields(input: OperationInput, numeroPiece?: string | null) {
 }
 
 type OpResult =
-  | { ok: true; message?: string }
+  | { ok: true; id?: string; message?: string }
   | { ok: false; error: string };
 
 export async function createOperation(input: OperationInput): Promise<OpResult> {
@@ -118,10 +118,11 @@ export async function createOperation(input: OperationInput): Promise<OpResult> 
   return ceoPending
     ? {
         ok: true,
+        id: created.id,
         message:
           "Opération enregistrée. Elle est en attente d'approbation par la CEO avant d'être comptabilisée.",
       }
-    : { ok: true };
+    : { ok: true, id: created.id };
 }
 
 export async function updateOperation(

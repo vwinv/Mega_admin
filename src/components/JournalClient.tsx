@@ -3,7 +3,7 @@
 import { Paperclip, Plus, X } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   createOperation,
   deleteOperation,
@@ -36,7 +36,9 @@ import {
 } from "@/lib/controle-filters";
 import { extractTvaFromTtc } from "@/lib/facturation";
 import { STATUT_APPROBATION_LABELS } from "@/lib/approbation";
-import { formatFcfa } from "@/lib/format";
+import { formatFcfa, formatFileSize } from "@/lib/format";
+import { MAX_ARCHIVE_BYTES } from "@/lib/archive-client";
+import { uploadPieceFile } from "@/lib/upload-piece-client";
 import {
   CategorieOption,
   CodeBudgetaireOption,
@@ -73,6 +75,9 @@ export function JournalClient({
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
   const [editPieces, setEditPieces] = useState<PieceComptableRow[]>([]);
+  const [pendingFiles, setPendingFiles] = useState<File[]>([]);
+  const [pendingLibelle, setPendingLibelle] = useState("");
+  const pendingFileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (editing?.id) {
@@ -145,17 +150,37 @@ export function JournalClient({
 
   function openCreate() {
     setEditing(null);
+    setPendingFiles([]);
+    setPendingLibelle("");
     setModalOpen(true);
   }
 
   function openEdit(op: OperationRow) {
     setEditing(op);
+    setPendingFiles([]);
+    setPendingLibelle("");
     setModalOpen(true);
   }
 
   function closeModal() {
     setModalOpen(false);
     setEditing(null);
+    setPendingFiles([]);
+    setPendingLibelle("");
+  }
+
+  function addPendingFiles(list: FileList | null) {
+    if (!list?.length) return;
+    const next: File[] = [];
+    for (const file of Array.from(list)) {
+      if (file.size > MAX_ARCHIVE_BYTES) {
+        window.alert(`« ${file.name} » dépasse 15 Mo.`);
+        continue;
+      }
+      next.push(file);
+    }
+    if (next.length) setPendingFiles((prev) => [...prev, ...next]);
+    if (pendingFileRef.current) pendingFileRef.current.value = "";
   }
 
   async function handleDelete(id: string) {
@@ -396,7 +421,7 @@ export function JournalClient({
         description={
           editing
             ? "Joignez le PDF dans la zone verte ci-dessous (archivage immédiat). « Enregistrer » ne concerne que l'écriture."
-            : "Le n° de pièce (BN-année-xxxx) sera attribué automatiquement."
+            : "Le n° de pièce (BN-année-xxxx) sera attribué automatiquement. Vous pouvez déjà joindre le justificatif PDF."
         }
         size="lg"
         footer={
@@ -419,19 +444,103 @@ export function JournalClient({
           showTva
           onSubmit={async (input) => {
             if (editing) return updateOperation(editing.id, input);
+
             const r = await createOperation(input);
-            if (r.ok) closeModal();
+            if (!r.ok) return r;
+
+            if (pendingFiles.length > 0 && r.id) {
+              const errors: string[] = [];
+              for (const file of pendingFiles) {
+                const up = await uploadPieceFile(
+                  file,
+                  { operationId: r.id },
+                  pendingLibelle || undefined
+                );
+                if (!up.ok) errors.push(`${file.name}: ${up.error}`);
+              }
+              setPendingFiles([]);
+              if (errors.length) {
+                return {
+                  ok: true,
+                  id: r.id,
+                  message: `Opération créée, mais certaines pièces n'ont pas pu être jointes :\n${errors.join("\n")}`,
+                };
+              }
+            }
+
             return r;
           }}
           onCancel={closeModal}
         />
-        {editing?.id && (
+
+        {editing?.id ? (
           <PiecesComptablesPanel
             operationId={editing.id}
             pieces={editPieces}
             canEdit={canWrite}
             compact
           />
+        ) : (
+          canWrite && (
+            <div className="mt-4 rounded-xl border border-mega-200 bg-mega-50/40 p-4">
+              <h3 className="text-sm font-semibold text-slate-900">
+                Justificatif / pièce comptable
+              </h3>
+              <p className="mt-1 text-xs text-slate-600">
+                Joignez le PDF maintenant : il sera archivé automatiquement à
+                l&apos;enregistrement de l&apos;opération.
+              </p>
+              <div className="mt-3 space-y-3">
+                <Input
+                  label="Libellé (optionnel)"
+                  value={pendingLibelle}
+                  onChange={(e) => setPendingLibelle(e.target.value)}
+                  placeholder="ex. Reçu CEL"
+                />
+                <div>
+                  <span className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    Fichier (PDF, image — max 15 Mo)
+                  </span>
+                  <input
+                    ref={pendingFileRef}
+                    type="file"
+                    accept=".pdf,.jpg,.jpeg,.png,.webp,.gif,.xlsx,.xls,.doc,.docx"
+                    multiple
+                    onChange={(e) => addPendingFiles(e.target.files)}
+                    className="block w-full text-sm text-slate-600 file:mr-3 file:rounded-lg file:border-0 file:bg-mega-600 file:px-3 file:py-2 file:text-sm file:font-medium file:text-white"
+                  />
+                </div>
+                {pendingFiles.length > 0 && (
+                  <ul className="divide-y divide-slate-100 rounded-lg border border-slate-200 bg-white">
+                    {pendingFiles.map((f, i) => (
+                      <li
+                        key={`${f.name}-${i}`}
+                        className="flex items-center justify-between gap-2 px-3 py-2 text-sm"
+                      >
+                        <span className="min-w-0 truncate font-medium text-slate-800">
+                          {f.name}{" "}
+                          <span className="text-xs font-normal text-slate-400">
+                            ({formatFileSize(f.size)})
+                          </span>
+                        </span>
+                        <button
+                          type="button"
+                          className="shrink-0 text-xs text-red-600 hover:underline"
+                          onClick={() =>
+                            setPendingFiles((prev) =>
+                              prev.filter((_, idx) => idx !== i)
+                            )
+                          }
+                        >
+                          Retirer
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </div>
+          )
         )}
       </Modal>
     </div>
