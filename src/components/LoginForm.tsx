@@ -1,11 +1,12 @@
 "use client";
 
+import { Eye, EyeOff, Lock, User } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { FormEvent, useState } from "react";
 import { login } from "@/app/actions/auth";
 import { GOOGLE_LOGIN_ERRORS } from "@/lib/google-auth-errors";
 import { MegaLogo } from "@/components/MegaLogo";
-import { Alert, Button, Input } from "@/components/ui";
+import { Alert } from "@/components/ui";
 
 function GoogleIcon() {
   return (
@@ -34,6 +35,8 @@ export function LoginForm({ googleEnabled }: { googleEnabled: boolean }) {
   const searchParams = useSearchParams();
   const [identifiant, setIdentifiant] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [remember, setRemember] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -62,90 +65,147 @@ export function LoginForm({ googleEnabled }: { googleEnabled: boolean }) {
   }
 
   return (
-    <div className="grid min-h-screen lg:grid-cols-[440px_1fr]">
-      <aside className="relative hidden flex-col justify-between bg-gradient-to-b from-[var(--c-blue-900)] to-[var(--c-blue-950)] px-11 py-12 text-[var(--c-stone-50)] lg:flex">
-        <MegaLogo width={132} priority variant="ivory" />
-        <div className="flex max-w-sm flex-col gap-4">
-          <p className="text-xs font-medium uppercase tracking-[0.22em] text-[var(--c-gold-300)]">
-            Mega SN SARL
-          </p>
-          <h1 className="text-4xl font-semibold leading-tight tracking-tight">
-            La gestion financière, avec sérénité.
-          </h1>
-          <p className="text-[15px] font-normal leading-relaxed text-[var(--c-blue-200)]">
-            Trésorerie, journal, facturation et conformité SYSCOHADA, réunis
-            dans un seul espace sécurisé.
-          </p>
-        </div>
-        <p className="text-xs tracking-wide text-[var(--c-blue-300)]">
-          SYSCOHADA · FCFA · Accès réservé au personnel
-        </p>
-      </aside>
+    <div className="login-geo relative flex min-h-screen items-center justify-center px-4 py-8 sm:px-6 lg:px-10">
+      <div className="relative grid w-full max-w-[1100px] overflow-hidden rounded-[2.25rem] bg-black shadow-[0_30px_80px_-20px_rgba(0,0,0,0.45)] lg:min-h-[640px] lg:grid-cols-[1.15fr_0.95fr]">
+        <aside className="relative hidden min-h-[640px] flex-col justify-between p-8 text-white lg:flex xl:p-10">
+          <div
+            className="absolute inset-0 bg-black bg-cover bg-[center_left] bg-no-repeat"
+            style={{ backgroundImage: "url('/login-hero.png')" }}
+            aria-hidden
+          />
+          <div
+            className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-black/40"
+            aria-hidden
+          />
 
-      <div className="flex items-center justify-center bg-[var(--background)] px-6 py-12">
-        <div className="w-full max-w-[380px]">
-          <div className="mb-8 lg:hidden">
-            <MegaLogo width={140} priority />
+          <div className="relative z-10">
+            <MegaLogo width={118} priority variant="ivory" />
           </div>
 
-          <div>
-            <h2 className="text-3xl font-semibold tracking-tight text-[var(--foreground)]">
-              Connexion
-            </h2>
-            <p className="mt-2 text-sm leading-relaxed text-[var(--c-stone-600)]">
-              {googleEnabled
-                ? "Connectez-vous avec votre compte Google professionnel MEGA."
-                : "Connectez-vous avec votre identifiant MEGA."}
+          <div className="relative z-10 max-w-md pb-2">
+            <h1 className="text-5xl font-bold leading-[1.05] tracking-tight xl:text-[3.5rem]">
+              Bienvenue&nbsp;!
+            </h1>
+            <p className="mt-4 max-w-sm text-sm leading-relaxed text-white/65">
+              Gestion financière MEGA SN SARL · SYSCOHADA
             </p>
           </div>
+        </aside>
 
-          {(error || googleError) && (
-            <div className="mt-5">
-              <Alert type="error">{error ?? googleError}</Alert>
+        <section className="relative z-10 flex items-center bg-white px-6 py-10 sm:px-10 lg:rounded-l-[3rem] lg:px-12 xl:px-14">
+          <div className="mx-auto w-full max-w-[360px]">
+            <div className="mb-8 lg:hidden">
+              <MegaLogo width={130} priority />
             </div>
-          )}
 
-          <a
-            href={googleHref}
-            className="mt-6 flex w-full items-center justify-center gap-2.5 rounded-md border border-[var(--border-strong)] bg-[var(--card)] px-4 py-3.5 text-sm font-medium text-[var(--foreground)] transition-colors hover:border-[var(--c-blue-400)]"
-          >
-            <GoogleIcon />
-            Continuer avec Google
-          </a>
+            <h2 className="text-[2.35rem] font-bold leading-none tracking-tight text-black">
+              Connexion
+            </h2>
+            <p className="mt-3 text-sm text-neutral-500">
+              {googleEnabled
+                ? "Compte Google professionnel MEGA ou identifiant."
+                : "Connectez-vous avec votre identifiant MEGA."}
+            </p>
 
-          <div className="my-5 flex items-center gap-3.5 text-xs text-[var(--muted)]">
-            <span className="h-px flex-1 bg-[var(--border)]" />
-            ou
-            <span className="h-px flex-1 bg-[var(--border)]" />
+            {(error || googleError) && (
+              <div className="mt-5">
+                <Alert type="error">{error ?? googleError}</Alert>
+              </div>
+            )}
+
+            <form onSubmit={handleSubmit} className="mt-8 space-y-4">
+              <label className="block">
+                <span className="sr-only">Identifiant</span>
+                <span className="flex items-center gap-3 rounded-full bg-neutral-100 px-4 py-3.5 transition focus-within:ring-2 focus-within:ring-black/15">
+                  <User className="h-[18px] w-[18px] shrink-0 text-neutral-400" />
+                  <input
+                    value={identifiant}
+                    onChange={(e) => setIdentifiant(e.target.value)}
+                    autoComplete="username"
+                    required={!googleEnabled}
+                    placeholder="Identifiant"
+                    className="w-full bg-transparent text-sm text-neutral-800 outline-none placeholder:italic placeholder:text-neutral-400"
+                  />
+                </span>
+              </label>
+
+              <label className="block">
+                <span className="sr-only">Mot de passe</span>
+                <span className="flex items-center gap-3 rounded-full bg-neutral-100 px-4 py-3.5 transition focus-within:ring-2 focus-within:ring-black/15">
+                  <Lock className="h-[18px] w-[18px] shrink-0 text-neutral-400" />
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    autoComplete="current-password"
+                    required={!googleEnabled}
+                    placeholder="Mot de passe"
+                    className="w-full bg-transparent text-sm text-neutral-800 outline-none placeholder:italic placeholder:text-neutral-400"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((v) => !v)}
+                    className="shrink-0 text-neutral-400 transition hover:text-neutral-700"
+                    aria-label={
+                      showPassword
+                        ? "Masquer le mot de passe"
+                        : "Afficher le mot de passe"
+                    }
+                  >
+                    {showPassword ? (
+                      <EyeOff className="h-[18px] w-[18px]" />
+                    ) : (
+                      <Eye className="h-[18px] w-[18px]" />
+                    )}
+                  </button>
+                </span>
+              </label>
+
+              <div className="flex items-center justify-between gap-3 px-1 pt-1 text-[13px]">
+                <label className="inline-flex cursor-pointer items-center gap-2 text-neutral-500 italic">
+                  <input
+                    type="checkbox"
+                    checked={remember}
+                    onChange={(e) => setRemember(e.target.checked)}
+                    className="h-4 w-4 rounded-full border-neutral-300 text-black focus:ring-black/20"
+                  />
+                  Se souvenir de moi
+                </label>
+                <span className="text-neutral-400 italic">Personnel MEGA</span>
+              </div>
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="mt-2 flex w-full cursor-pointer items-center justify-center rounded-full bg-black px-4 py-3.5 text-sm font-semibold text-white transition hover:bg-neutral-900 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {loading ? "Connexion…" : "Se connecter"}
+              </button>
+            </form>
+
+            {googleEnabled && (
+              <>
+                <div className="my-6 flex items-center gap-4 text-xs text-neutral-400">
+                  <span className="h-px flex-1 bg-neutral-200" />
+                  Ou
+                  <span className="h-px flex-1 bg-neutral-200" />
+                </div>
+
+                <a
+                  href={googleHref}
+                  className="flex w-full items-center justify-center gap-2.5 rounded-full bg-neutral-100 px-4 py-3.5 text-sm font-semibold text-neutral-800 transition hover:bg-neutral-200"
+                >
+                  <GoogleIcon />
+                  Continuer avec Google
+                </a>
+              </>
+            )}
+
+            <p className="mt-8 text-center text-xs leading-relaxed text-neutral-400">
+              Accès réservé au personnel autorisé de MEGA SN SARL
+            </p>
           </div>
-
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <Input
-              label="Identifiant"
-              value={identifiant}
-              onChange={(e) => setIdentifiant(e.target.value)}
-              autoComplete="username"
-              required={!googleEnabled}
-              placeholder="prenom.nom"
-            />
-            <Input
-              label="Mot de passe"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              autoComplete="current-password"
-              required={!googleEnabled}
-              placeholder="••••••••"
-            />
-            <Button type="submit" className="mt-2 w-full" disabled={loading}>
-              {loading ? "Connexion…" : "Se connecter"}
-            </Button>
-          </form>
-
-          <p className="mt-6 text-center text-xs leading-relaxed text-[var(--muted)]">
-            Accès réservé au personnel autorisé de MEGA SN SARL
-          </p>
-        </div>
+        </section>
       </div>
     </div>
   );
