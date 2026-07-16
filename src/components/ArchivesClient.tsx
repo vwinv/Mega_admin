@@ -312,7 +312,7 @@ export function ArchivesClient({
                                 ? new Date(p.dateDocument).toLocaleDateString(
                                     "fr-FR"
                                   )
-                                : "—"}
+                                : ""}
                             </td>
                             <td>
                               <span
@@ -342,7 +342,7 @@ export function ArchivesClient({
                             <td className="text-right text-xs text-slate-500">
                               {p.tailleOctets != null
                                 ? formatFileSize(p.tailleOctets)
-                                : "—"}
+                                : ""}
                             </td>
                             <td className="text-center">
                               <a

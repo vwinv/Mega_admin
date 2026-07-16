@@ -135,7 +135,7 @@ export default async function TresoreriePage() {
       {soldes && soldes.pendingCount > 0 && (
         <Alert type="info">
           <strong>{soldes.pendingCount}</strong> opération(s) en attente
-          d&apos;approbation CEO ({formatFcfa(soldes.pendingMontant)} FCFA) —{" "}
+          d&apos;approbation CEO ({formatFcfa(soldes.pendingMontant)} FCFA) :{" "}
           non incluses dans la trésorerie tant qu&apos;elles ne sont pas
           approuvées.{" "}
           <Link href="/approbations" className="font-medium underline">

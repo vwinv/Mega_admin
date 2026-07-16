@@ -328,7 +328,7 @@ export function DevisDetailClient({
                 onChange={(e) => setClientId(e.target.value)}
                 required
               >
-                <option value="">— Choisir —</option>
+                <option value="">Choisir</option>
                 {clients.map((c) => (
                   <option key={c.id} value={c.id}>
                     {c.nom}
@@ -402,7 +402,7 @@ export function DevisDetailClient({
         </Card>
       ) : (
         <DevisPrintView
-          numero={devis.numero ?? "—"}
+          numero={devis.numero ?? ""}
           titre={titre}
           date={date}
           clientNom={clientNom}

@@ -26,7 +26,7 @@ export function TresorerieAnomalies({
 
     if (a.correction.action === "supprimer_caisse") {
       const ok = confirm(
-        `Retirer cette écriture de la petite caisse ?\n\nMontant : ${a.montant.toLocaleString("fr-FR")} FCFA\nBanque conservée : ${a.contrepartie?.reference ?? "—"}`
+        `Retirer cette écriture de la petite caisse ?\n\nMontant : ${a.montant.toLocaleString("fr-FR")} FCFA\nBanque conservée : ${a.contrepartie?.reference ?? ""}`
       );
       if (!ok) return;
       setBusyId(a.id);
@@ -51,7 +51,7 @@ export function TresorerieAnomalies({
           Écritures à vérifier ({anomalies.length})
         </h2>
         <p className="mt-1 text-sm text-amber-900/70">
-          Identification banque vs petite caisse — corrigez les saisies en
+          Identification banque vs petite caisse : corrigez les saisies en
           double ou mal classées.
         </p>
       </div>

@@ -1,23 +1,36 @@
+import type { CSSProperties } from "react";
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { IBM_Plex_Mono, IBM_Plex_Sans } from "next/font/google";
 import { AppShell } from "@/components/AppShell";
 import { getSession } from "@/lib/auth";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+/** Typo pro finance / admin : une seule famille claire et lisible */
+const fontSans = IBM_Plex_Sans({
+  variable: "--font-ui",
   subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
 });
 
-const geistMono = Geist_Mono({
+const fontMono = IBM_Plex_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
+  weight: ["400", "500", "600"],
 });
 
 export const metadata: Metadata = {
   title: "MEGA SN SARL · Gestion financière",
   description:
     "Application de gestion financière pour MEGA SN SARL (FCFA, SYSCOHADA)",
+  applicationName: "MEGA SN",
+  icons: {
+    icon: [
+      { url: "/favicon.ico", sizes: "32x32" },
+      { url: "/icon.png", type: "image/png", sizes: "512x512" },
+    ],
+    apple: [{ url: "/apple-icon.png", sizes: "180x180", type: "image/png" }],
+    shortcut: "/favicon.ico",
+  },
 };
 
 export default async function RootLayout({
@@ -32,12 +45,18 @@ export default async function RootLayout({
     user = null;
   }
 
+  const fontAliases = {
+    "--font-display": "var(--font-ui)",
+    "--font-body": "var(--font-ui)",
+  } as CSSProperties;
+
   return (
     <html
       lang="fr"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${fontSans.variable} ${fontMono.variable} h-full antialiased`}
+      style={fontAliases}
     >
-      <body className="flex min-h-full text-slate-900">
+      <body className="flex min-h-full text-[var(--foreground)]">
         <AppShell user={user}>{children}</AppShell>
       </body>
     </html>

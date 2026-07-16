@@ -296,8 +296,8 @@ export function FacturationClient({
                   clients.map((c) => (
                     <tr key={c.id}>
                       <td className="font-medium">{c.nom}</td>
-                      <td>{c.email ?? "—"}</td>
-                      <td>{c.telephone ?? "—"}</td>
+                      <td>{c.email ?? ""}</td>
+                      <td>{c.telephone ?? ""}</td>
                     </tr>
                   ))
                 )}

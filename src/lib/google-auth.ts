@@ -106,12 +106,40 @@ export async function fetchGoogleUserInfo(
 }
 
 export function getRequestBaseUrl(request: Request): string {
+  const hostHeader =
+    request.headers.get("x-forwarded-host") ?? request.headers.get("host");
+  const host = hostHeader?.split(",")[0]?.trim() ?? "";
+  const hostName = host.split(":")[0]?.toLowerCase() ?? "";
+  const isLocal =
+    hostName === "localhost" ||
+    hostName === "127.0.0.1" ||
+    hostName === "[::1]" ||
+    hostName === "::1";
+
+  // En local, toujours utiliser l'hote de la requete (evite redirect_uri_mismatch
+  // si NEXT_PUBLIC_APP_URL pointe vers la prod via .env.local / Vercel CLI).
+  // Normalise 127.0.0.1 -> localhost pour matcher la console Google.
+  if (isLocal && host) {
+    const proto = (
+      request.headers.get("x-forwarded-proto") ?? "http"
+    )
+      .split(",")[0]
+      .trim();
+    const port = host.includes(":") ? host.slice(host.indexOf(":")) : "";
+    const localHost = `localhost${port || ":3000"}`;
+    return `${proto}://${localHost}`.replace(/\/$/, "");
+  }
+
   const envUrl = cleanEnv(process.env.NEXT_PUBLIC_APP_URL);
   if (envUrl) return envUrl.replace(/\/$/, "");
 
-  const host =
-    request.headers.get("x-forwarded-host") ?? request.headers.get("host");
-  const proto = request.headers.get("x-forwarded-proto") ?? "http";
-  if (host) return `${proto.split(",")[0].trim()}://${host.split(",")[0].trim()}`;
+  if (host) {
+    const proto = (
+      request.headers.get("x-forwarded-proto") ?? "http"
+    )
+      .split(",")[0]
+      .trim();
+    return `${proto}://${host}`.replace(/\/$/, "");
+  }
   return "http://localhost:3000";
 }

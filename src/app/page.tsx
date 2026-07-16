@@ -22,28 +22,28 @@ const quickLinks = [
     label: "Journal",
     desc: "Saisir une opération",
     icon: Receipt,
-    color: "from-blue-500 to-blue-600",
+    color: "bg-[var(--c-blue-800)]",
   },
   {
     href: "/caisse",
     label: "Petite caisse",
     desc: "Mouvements espèces",
     icon: Wallet,
-    color: "from-violet-500 to-violet-600",
+    color: "bg-[var(--c-blue-600)]",
   },
   {
     href: "/tresorerie",
     label: "Trésorerie",
     desc: "Vue mensuelle",
     icon: Landmark,
-    color: "from-cyan-500 to-cyan-600",
+    color: "bg-[var(--c-gold-500)]",
   },
   {
     href: "/controle",
     label: "Contrôle",
     desc: "Vérifications",
     icon: ShieldCheck,
-    color: "from-mega-500 to-mega-600",
+    color: "bg-[var(--c-blue-700)]",
   },
 ];
 
@@ -107,18 +107,21 @@ export default async function DashboardPage() {
             <Link
               key={link.href}
               href={link.href}
-              className="group flex items-center gap-3 rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm transition-all hover:border-mega-200 hover:shadow-md"
+              className="group flex items-center gap-3 rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--card)] p-4 shadow-[var(--shadow-xs)] transition-all hover:border-[var(--c-blue-300)] hover:shadow-[var(--shadow-sm)]"
             >
               <div
-                className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br ${link.color} shadow-sm`}
+                className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-md ${link.color} shadow-sm`}
               >
-                <Icon className="h-5 w-5 text-white" strokeWidth={2} />
+                <Icon
+                  className={`h-5 w-5 ${link.href === "/tresorerie" ? "text-[var(--c-blue-950)]" : "text-white"}`}
+                  strokeWidth={2}
+                />
               </div>
               <div className="min-w-0 flex-1">
-                <p className="font-semibold text-slate-900">{link.label}</p>
-                <p className="text-xs text-slate-500">{link.desc}</p>
+                <p className="font-medium text-[var(--foreground)]">{link.label}</p>
+                <p className="text-xs text-[var(--muted)]">{link.desc}</p>
               </div>
-              <ArrowRight className="h-4 w-4 shrink-0 text-slate-300 transition-transform group-hover:translate-x-0.5 group-hover:text-mega-500" />
+              <ArrowRight className="h-4 w-4 shrink-0 text-[var(--c-stone-300)] transition-transform group-hover:translate-x-0.5 group-hover:text-[var(--c-blue-600)]" />
             </Link>
           );
         })}
@@ -126,17 +129,18 @@ export default async function DashboardPage() {
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard
+          label="Trésorerie totale"
+          value={formatFcfaLabel(soldes.tresorerieTotale, params.devise)}
+          variant="inverse"
+          hint="Banque + mobile money + caisse"
+        />
+        <StatCard
           label="Solde banque"
           value={formatFcfaLabel(soldes.soldeBanque, params.devise)}
         />
         <StatCard
           label="Solde petite caisse"
           value={formatFcfaLabel(soldes.soldeCaisse, params.devise)}
-        />
-        <StatCard
-          label="Trésorerie totale"
-          value={formatFcfaLabel(soldes.tresorerieTotale, params.devise)}
-          variant="positive"
         />
         <StatCard
           label="Résultat (entrées − sorties)"

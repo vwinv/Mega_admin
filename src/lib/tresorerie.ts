@@ -321,7 +321,7 @@ export async function getAnomaliesTresorerie(
         id: `plafond-${c.id}`,
         type: "CAISSE_SUR_PLAFOND",
         severity: "warning",
-        message: `Sortie caisse ${montant.toLocaleString("fr-FR")} FCFA supérieure au plafond (${plafondCaisse.toLocaleString("fr-FR")} FCFA) — vérifier si ce n'est pas une opération banque.`,
+        message: `Sortie caisse ${montant.toLocaleString("fr-FR")} FCFA supérieure au plafond (${plafondCaisse.toLocaleString("fr-FR")} FCFA) : vérifier si ce n'est pas une opération banque.`,
         date: c.date?.toISOString() ?? null,
         montant,
         compte: "caisse",

@@ -10,21 +10,23 @@ export function Button({
   className = "",
   ...props
 }: React.ButtonHTMLAttributes<HTMLButtonElement> & {
-  variant?: "primary" | "secondary" | "danger" | "ghost";
+  variant?: "primary" | "secondary" | "danger" | "ghost" | "accent";
 }) {
   const styles = {
     primary:
-      "bg-gradient-to-r from-mega-500 to-mega-600 text-white shadow-md shadow-mega-500/25 hover:from-mega-600 hover:to-mega-700 hover:shadow-lg",
+      "bg-[var(--brand)] text-[var(--c-stone-50)] shadow-sm hover:bg-[var(--brand-hover)]",
     secondary:
-      "border border-slate-200 bg-white text-slate-700 shadow-sm hover:border-slate-300 hover:bg-slate-50",
+      "border border-[var(--border-strong)] bg-[var(--card)] text-[var(--foreground)] shadow-xs hover:border-[var(--c-blue-400)]",
     danger:
-      "bg-gradient-to-r from-red-600 to-red-700 text-white shadow-md shadow-red-600/20 hover:from-red-700 hover:to-red-800",
-    ghost: "text-slate-600 hover:bg-slate-100/80 hover:text-slate-900",
+      "bg-[var(--c-clay-700)] text-white shadow-sm hover:bg-[var(--c-clay-500)]",
+    ghost: "text-[var(--c-stone-600)] hover:bg-[var(--c-stone-100)] hover:text-[var(--foreground)]",
+    accent:
+      "bg-[var(--accent)] text-[var(--c-blue-950)] shadow-sm hover:bg-[var(--c-gold-600)] hover:text-white",
   };
   return (
     <button
       type={type}
-      className={`inline-flex cursor-pointer items-center justify-center rounded-xl px-4 py-2.5 text-sm font-medium transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mega-500/40 disabled:cursor-not-allowed disabled:opacity-50 ${styles[variant]} ${className}`}
+      className={`inline-flex cursor-pointer items-center justify-center rounded-md px-4 py-2.5 text-sm font-medium tracking-wide transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--c-blue-400)]/40 disabled:cursor-not-allowed disabled:opacity-50 ${styles[variant]} ${className}`}
       {...props}
     >
       {children}
@@ -40,12 +42,12 @@ export function Input({
   return (
     <label className="block">
       {label && (
-        <span className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-500">
+        <span className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-[var(--c-stone-600)]">
           {label}
         </span>
       )}
       <input
-        className={`w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm shadow-sm transition-all placeholder:text-slate-400 focus:border-mega-500 focus:outline-none focus:ring-4 focus:ring-mega-500/10 ${className}`}
+        className={`w-full rounded-md border border-[var(--border-strong)] bg-[var(--card)] px-3.5 py-2.5 text-sm shadow-xs transition-all placeholder:text-[var(--muted)] focus:border-[var(--c-blue-400)] focus:outline-none focus:ring-4 focus:ring-[var(--c-blue-400)]/15 ${className}`}
         {...props}
       />
     </label>
@@ -61,12 +63,12 @@ export function Select({
   return (
     <label className="block">
       {label && (
-        <span className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-500">
+        <span className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-[var(--c-stone-600)]">
           {label}
         </span>
       )}
       <select
-        className={`w-full cursor-pointer rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm shadow-sm transition-all focus:border-mega-500 focus:outline-none focus:ring-4 focus:ring-mega-500/10 ${className}`}
+        className={`w-full cursor-pointer rounded-md border border-[var(--border-strong)] bg-[var(--card)] px-3.5 py-2.5 text-sm shadow-xs transition-all focus:border-[var(--c-blue-400)] focus:outline-none focus:ring-4 focus:ring-[var(--c-blue-400)]/15 ${className}`}
         {...props}
       >
         {children}
@@ -83,7 +85,7 @@ export function Card({
   className?: string;
 }) {
   return (
-    <div className={`glass-card rounded-2xl p-6 ${className}`}>{children}</div>
+    <div className={`glass-card rounded-[var(--radius-lg)] p-6 ${className}`}>{children}</div>
   );
 }
 
@@ -95,13 +97,13 @@ export function Alert({
   children: ReactNode;
 }) {
   const styles = {
-    error: "border-red-200/80 bg-red-50/90 text-red-800",
-    success: "border-mega-200/80 bg-mega-50/90 text-mega-800",
-    info: "border-blue-200/80 bg-blue-50/90 text-blue-800",
+    error: "border-[var(--c-clay-100)] bg-[var(--c-clay-100)] text-[var(--c-clay-700)]",
+    success: "border-[var(--c-sage-100)] bg-[var(--c-sage-100)] text-[var(--c-sage-700)]",
+    info: "border-[var(--c-blue-100)] bg-[var(--c-blue-50)] text-[var(--c-blue-800)]",
   };
   return (
     <div
-      className={`rounded-xl border px-4 py-3.5 text-sm shadow-sm ${styles[type]}`}
+      className={`rounded-md border px-4 py-3.5 text-sm shadow-[var(--shadow-xs)] ${styles[type]}`}
     >
       {children}
     </div>
@@ -120,14 +122,14 @@ export function PageHeader({
   return (
     <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
       <div>
-        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-mega-600">
+        <p className="text-[11px] font-medium uppercase tracking-[0.22em] text-[var(--text-accent)]">
           MEGA SN SARL
         </p>
-        <h1 className="mt-1 text-3xl font-bold tracking-tight text-slate-900">
+        <h1 className="font-display mt-1.5 text-3xl font-semibold tracking-tight text-[var(--foreground)] sm:text-[2rem]">
           {title}
         </h1>
         {description && (
-          <p className="mt-2 max-w-2xl text-sm leading-relaxed text-slate-500">
+          <p className="font-body mt-2 max-w-2xl text-sm leading-relaxed text-[var(--c-stone-600)]">
             {description}
           </p>
         )}
@@ -139,24 +141,29 @@ export function PageHeader({
 
 const statVariants = {
   default: {
-    card: "border-slate-200/80 bg-white",
-    accent: "bg-slate-100 text-slate-600",
-    value: "text-slate-900",
+    card: "border-[var(--border)] bg-[var(--card)]",
+    accent: "bg-[var(--c-stone-100)] text-[var(--c-stone-600)]",
+    value: "text-[var(--foreground)]",
   },
   positive: {
-    card: "border-mega-200/60 bg-gradient-to-br from-mega-50/80 to-white",
-    accent: "bg-mega-100 text-mega-700",
-    value: "text-mega-800",
+    card: "border-[var(--border)] bg-[var(--card)]",
+    accent: "bg-[var(--c-sage-100)] text-[var(--c-sage-700)]",
+    value: "text-[var(--c-sage-700)]",
   },
   negative: {
-    card: "border-red-200/60 bg-gradient-to-br from-red-50/80 to-white",
-    accent: "bg-red-100 text-red-700",
-    value: "text-red-800",
+    card: "border-[var(--border)] bg-[var(--card)]",
+    accent: "bg-[var(--c-clay-100)] text-[var(--c-clay-700)]",
+    value: "text-[var(--c-clay-700)]",
   },
   warning: {
-    card: "border-amber-200/60 bg-gradient-to-br from-amber-50/80 to-white",
-    accent: "bg-amber-100 text-amber-700",
-    value: "text-amber-800",
+    card: "border-[var(--border)] bg-[var(--card)]",
+    accent: "bg-[var(--c-amber-100)] text-[var(--c-amber-700)]",
+    value: "text-[var(--c-amber-700)]",
+  },
+  inverse: {
+    card: "border-transparent bg-[var(--c-blue-950)] text-[var(--c-stone-50)]",
+    accent: "bg-[rgba(210,179,108,0.16)] text-[var(--c-gold-300)]",
+    value: "text-[var(--c-stone-50)]",
   },
 };
 
@@ -169,22 +176,40 @@ export function StatCard({
   label: string;
   value: string;
   hint?: string;
-  variant?: "default" | "positive" | "negative" | "warning";
+  variant?: "default" | "positive" | "negative" | "warning" | "inverse";
 }) {
   const v = statVariants[variant];
 
   return (
     <div
-      className={`rounded-2xl border p-5 shadow-sm transition-shadow hover:shadow-md ${v.card}`}
+      className={`rounded-[var(--radius-lg)] border p-6 shadow-[var(--shadow-xs)] transition-shadow hover:shadow-[var(--shadow-sm)] ${v.card}`}
     >
       <div className="flex items-start justify-between gap-3">
-        <p className="text-sm font-medium text-slate-500">{label}</p>
-        <span className={`rounded-lg px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${v.accent}`}>
+        <p
+          className={`text-[11px] font-medium uppercase tracking-[0.12em] ${
+            variant === "inverse" ? "text-[var(--c-blue-200)]" : "text-[var(--muted)]"
+          }`}
+        >
+          {label}
+        </p>
+        <span
+          className={`rounded-full px-2.5 py-0.5 text-[10px] font-medium uppercase tracking-wide ${v.accent}`}
+        >
           FCFA
         </span>
       </div>
-      <p className={`mt-3 text-2xl font-bold tracking-tight ${v.value}`}>{value}</p>
-      {hint && <p className="mt-2 text-xs text-slate-400">{hint}</p>}
+      <p className={`mt-3 text-2xl font-semibold tracking-tight tabular-nums ${v.value}`}>
+        {value}
+      </p>
+      {hint && (
+        <p
+          className={`mt-2.5 text-xs ${
+            variant === "inverse" ? "text-[var(--c-blue-300)]" : "text-[var(--muted)]"
+          }`}
+        >
+          {hint}
+        </p>
+      )}
     </div>
   );
 }
@@ -336,7 +361,7 @@ export function Fab({
     <button
       type="button"
       onClick={onClick}
-      className="fixed bottom-6 right-6 z-30 flex items-center gap-2 rounded-full bg-gradient-to-r from-mega-500 to-mega-600 px-5 py-3.5 text-sm font-semibold text-white shadow-lg shadow-mega-500/30 transition-all hover:scale-105 hover:shadow-xl lg:hidden"
+      className="fixed bottom-6 right-6 z-30 flex items-center gap-2 rounded-full bg-[var(--accent)] px-5 py-3.5 text-sm font-medium text-[var(--c-blue-950)] shadow-[var(--shadow-md)] transition-all hover:scale-105 hover:bg-[var(--c-gold-600)] hover:text-white lg:hidden"
       aria-label={label}
     >
       <span className="text-lg leading-none">+</span>
@@ -347,7 +372,7 @@ export function Fab({
 
 export function StickyToolbar({ children }: { children: ReactNode }) {
   return (
-    <div className="sticky top-0 z-20 -mx-1 mb-4 rounded-2xl border border-slate-200/80 bg-white/90 px-4 py-3 shadow-sm backdrop-blur-md">
+    <div className="sticky top-0 z-20 -mx-1 mb-4 rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--card)]/95 px-4 py-3 shadow-[var(--shadow-xs)] backdrop-blur-md">
       {children}
     </div>
   );

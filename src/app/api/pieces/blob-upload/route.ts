@@ -37,7 +37,7 @@ export async function POST(request: Request) {
       request,
       body,
       onBeforeGenerateToken: async (_pathname, clientPayload) => {
-        // clientPayload = JSON with entity ids — validated later at register
+        // clientPayload = JSON with entity ids : validated later at register
         if (clientPayload) {
           try {
             JSON.parse(clientPayload);

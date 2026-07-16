@@ -33,7 +33,7 @@ export function PiecesComptablesPanel({
   pieces: PieceComptableRow[];
   canEdit: boolean;
   compact?: boolean;
-  /** Upload direct Vercel Blob (requis en prod pour PDF > ~2–3 Mo) */
+  /** Upload direct Vercel Blob (requis en prod pour PDF > ~2-3 Mo) */
   useBlobUpload?: boolean;
 } & EntityLink) {
   const router = useRouter();
@@ -287,7 +287,7 @@ export function PiecesComptablesPanel({
           />
           <div>
             <span className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-500">
-              Fichier (PDF, image, Word, Excel — max 15 Mo)
+              Fichier (PDF, image, Word, Excel, max 15 Mo)
             </span>
             <input
               ref={fileRef}
@@ -360,7 +360,7 @@ export function PiecesComptablesPanel({
         </ul>
       ) : (
         <p className="mt-4 rounded-lg border border-dashed border-slate-300 bg-white px-3 py-3 text-sm text-slate-500">
-          Aucune pièce pour l&apos;instant — sélectionnez un fichier ci-dessus.
+          Aucune pièce pour l&apos;instant. Sélectionnez un fichier ci-dessus.
         </p>
       )}
     </Wrapper>

@@ -92,7 +92,7 @@ export type TvaSourceRef = {
   sens: "collectee" | "deductible";
 };
 
-/** @deprecated alias — préférer TvaSourceRef */
+/** @deprecated alias : préférer TvaSourceRef */
 export type TvaFactureRef = TvaSourceRef;
 
 export type TvaMensuelle = {

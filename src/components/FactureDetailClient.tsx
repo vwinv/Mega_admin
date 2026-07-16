@@ -435,7 +435,7 @@ export function FactureDetailClient({
                 onChange={(e) => setClientId(e.target.value)}
                 required
               >
-                <option value="">— Choisir —</option>
+                <option value="">Choisir</option>
                 {clients.map((c) => (
                   <option key={c.id} value={c.id}>
                     {c.nom}
@@ -529,7 +529,7 @@ export function FactureDetailClient({
         </Card>
       ) : (
         <FacturePrintView
-          numero={facture.numero ?? "—"}
+          numero={facture.numero ?? ""}
           titre={titre || null}
           date={date}
           clientNom={clientNom}

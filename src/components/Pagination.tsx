@@ -43,7 +43,7 @@ export function Pagination({
   return (
     <div className="flex flex-col gap-3 border-t border-slate-100 bg-slate-50/80 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
       <p className="text-xs text-slate-500">
-        {from}–{to} sur {total} élément{total > 1 ? "s" : ""}
+        {from}-{to} sur {total} élément{total > 1 ? "s" : ""}
       </p>
       <div className="flex flex-wrap items-center gap-2">
         {onPageSizeChange && (

@@ -30,6 +30,9 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
+.dev-server.log
+.dev-server.pid
+.dev-server.watch.pid
 
 # OS
 .DS_Store
@@ -54,9 +57,9 @@ data/archives/**
 !data/.gitkeep
 !data/archives/.gitkeep
 
-# Cache
-.turbo/
-.cache/
+# Design Claude (artefacts locaux, non versionnés)
+Design d'application mobile/
+
 
 # Render
 .render/
@@ -69,3 +72,4 @@ data/archives/
 dumps/
 prisma/*.db
 prisma/*.db-journal
+.env*

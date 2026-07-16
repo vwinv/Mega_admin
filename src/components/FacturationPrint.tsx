@@ -64,7 +64,7 @@ export function DevisPrintView({
       </div>
 
       <h1 className="mb-2 text-lg font-bold">
-        DEVIS N°{numero} – {titre}
+        DEVIS N°{numero} - {titre}
       </h1>
       <p className="mb-1 text-sm">
         <strong>Date :</strong>{" "}
@@ -170,7 +170,7 @@ export function FacturePrintView({
 
       <h1 className="mb-2 text-lg font-bold">
         FACTURE N°{numero}
-        {titre ? ` – ${titre}` : ""}
+        {titre ? ` - ${titre}` : ""}
       </h1>
       <p className="mb-1 text-sm">
         <strong>Date :</strong>{" "}

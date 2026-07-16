@@ -168,7 +168,7 @@ export function TvaCalculator({
         open={!!editing}
         onClose={() => setEditing(null)}
         title={`TVA · ${editing?.label ?? ""} ${annee}`}
-        description="Références factures et journal — collectée / déductible auto."
+        description="Références factures et journal : collectée / déductible auto."
         size="xl"
         footer={
           <FormActions
@@ -187,7 +187,7 @@ export function TvaCalculator({
                   <div>
                     <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
                       <h3 className="text-sm font-semibold text-slate-800">
-                        TVA collectée — sources ({collectees.length})
+                        TVA collectée : sources ({collectees.length})
                       </h3>
                       <p className="text-sm text-slate-600">
                         Total :{" "}
@@ -204,7 +204,7 @@ export function TvaCalculator({
                   <div>
                     <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
                       <h3 className="text-sm font-semibold text-slate-800">
-                        TVA déductible — journal ({deductibles.length})
+                        TVA déductible : journal ({deductibles.length})
                       </h3>
                       <p className="text-sm text-slate-600">
                         Total :{" "}

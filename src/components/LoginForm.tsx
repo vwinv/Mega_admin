@@ -9,7 +9,7 @@ import { Alert, Button, Input } from "@/components/ui";
 
 function GoogleIcon() {
   return (
-    <svg className="h-5 w-5" viewBox="0 0 24 24" aria-hidden>
+    <svg className="h-[18px] w-[18px]" viewBox="0 0 24 24" aria-hidden>
       <path
         fill="#4285F4"
         d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
@@ -62,75 +62,90 @@ export function LoginForm({ googleEnabled }: { googleEnabled: boolean }) {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-slate-50 via-white to-mega-50/40 px-4 py-10">
-      <div className="w-full max-w-md">
-          <div className="mb-8 text-center">
-            <MegaLogo width={200} priority />
-            <h1 className="mt-4 text-xl font-semibold text-slate-900">
-              Connexion
-            </h1>
-            <p className="mt-1 text-sm font-medium text-mega-700">
-              Gestion financière MEGA SN SARL
-            </p>
-            <p className="mt-1 text-sm text-slate-500">Accès sécurisé au personnel</p>
+    <div className="grid min-h-screen lg:grid-cols-[440px_1fr]">
+      <aside className="relative hidden flex-col justify-between bg-gradient-to-b from-[var(--c-blue-900)] to-[var(--c-blue-950)] px-11 py-12 text-[var(--c-stone-50)] lg:flex">
+        <MegaLogo width={132} priority variant="ivory" />
+        <div className="flex max-w-sm flex-col gap-4">
+          <p className="text-xs font-medium uppercase tracking-[0.22em] text-[var(--c-gold-300)]">
+            Mega SN SARL
+          </p>
+          <h1 className="text-4xl font-semibold leading-tight tracking-tight">
+            La gestion financière, avec sérénité.
+          </h1>
+          <p className="text-[15px] font-normal leading-relaxed text-[var(--c-blue-200)]">
+            Trésorerie, journal, facturation et conformité SYSCOHADA, réunis
+            dans un seul espace sécurisé.
+          </p>
+        </div>
+        <p className="text-xs tracking-wide text-[var(--c-blue-300)]">
+          SYSCOHADA · FCFA · Accès réservé au personnel
+        </p>
+      </aside>
+
+      <div className="flex items-center justify-center bg-[var(--background)] px-6 py-12">
+        <div className="w-full max-w-[380px]">
+          <div className="mb-8 lg:hidden">
+            <MegaLogo width={140} priority />
           </div>
 
-        <div className="rounded-2xl border border-slate-200/80 bg-white p-8 shadow-xl shadow-slate-900/5">
+          <div>
+            <h2 className="text-3xl font-semibold tracking-tight text-[var(--foreground)]">
+              Connexion
+            </h2>
+            <p className="mt-2 text-sm leading-relaxed text-[var(--c-stone-600)]">
+              {googleEnabled
+                ? "Connectez-vous avec votre compte Google professionnel MEGA."
+                : "Connectez-vous avec votre identifiant MEGA."}
+            </p>
+          </div>
+
           {(error || googleError) && (
-            <div className="mb-4">
+            <div className="mt-5">
               <Alert type="error">{error ?? googleError}</Alert>
             </div>
           )}
 
-          {googleEnabled ? (
-            <Alert type="info">
-              Connectez-vous avec votre compte Google professionnel MEGA.
-            </Alert>
-          ) : null}
-
           <a
             href={googleHref}
-            className="mt-4 flex w-full items-center justify-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-700 shadow-sm transition-all hover:border-slate-300 hover:bg-slate-50"
+            className="mt-6 flex w-full items-center justify-center gap-2.5 rounded-md border border-[var(--border-strong)] bg-[var(--card)] px-4 py-3.5 text-sm font-medium text-[var(--foreground)] transition-colors hover:border-[var(--c-blue-400)]"
           >
             <GoogleIcon />
             Continuer avec Google
           </a>
 
-          <div className="my-6 flex items-center gap-3">
-            <div className="h-px flex-1 bg-slate-200" />
-            <span className="text-xs text-slate-400">ou</span>
-            <div className="h-px flex-1 bg-slate-200" />
+          <div className="my-5 flex items-center gap-3.5 text-xs text-[var(--muted)]">
+            <span className="h-px flex-1 bg-[var(--border)]" />
+            ou
+            <span className="h-px flex-1 bg-[var(--border)]" />
           </div>
 
-          <form onSubmit={handleSubmit}>
-            <div className="space-y-4">
-              <Input
-                label="Identifiant"
-                value={identifiant}
-                onChange={(e) => setIdentifiant(e.target.value)}
-                autoComplete="username"
-                required={!googleEnabled}
-                placeholder="ex. admin"
-              />
-              <Input
-                label="Mot de passe"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                autoComplete="current-password"
-                required={!googleEnabled}
-              />
-            </div>
-
-            <Button type="submit" className="mt-6 w-full" disabled={loading}>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <Input
+              label="Identifiant"
+              value={identifiant}
+              onChange={(e) => setIdentifiant(e.target.value)}
+              autoComplete="username"
+              required={!googleEnabled}
+              placeholder="prenom.nom"
+            />
+            <Input
+              label="Mot de passe"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              autoComplete="current-password"
+              required={!googleEnabled}
+              placeholder="••••••••"
+            />
+            <Button type="submit" className="mt-2 w-full" disabled={loading}>
               {loading ? "Connexion…" : "Se connecter"}
             </Button>
           </form>
-        </div>
 
-        <p className="mt-6 text-center text-xs text-slate-500">
-          Accès réservé au personnel autorisé de MEGA SN SARL
-        </p>
+          <p className="mt-6 text-center text-xs leading-relaxed text-[var(--muted)]">
+            Accès réservé au personnel autorisé de MEGA SN SARL
+          </p>
+        </div>
       </div>
     </div>
   );

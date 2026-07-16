@@ -239,7 +239,7 @@ export function UtilisateursClient({
                   <td>
                     <div className="flex items-center gap-2">
                       <Mail className="h-3.5 w-3.5 shrink-0 text-slate-400" />
-                      <span className="text-sm">{user.email ?? "—"}</span>
+                      <span className="text-sm">{user.email ?? ""}</span>
                     </div>
                   </td>
                   <td className="font-medium">{user.nom}</td>
@@ -384,7 +384,7 @@ export function UtilisateursClient({
                 .sort((a, b) => ROLE_PRIORITY[b] - ROLE_PRIORITY[a])
                 .map((r) => (
                   <option key={r} value={r}>
-                    P{ROLE_PRIORITY[r]} — {ROLE_LABELS[r]}
+                    P{ROLE_PRIORITY[r]} : {ROLE_LABELS[r]}
                   </option>
                 ))}
             </Select>

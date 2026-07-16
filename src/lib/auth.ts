@@ -70,7 +70,7 @@ export async function destroySession(): Promise<void> {
 
 /**
  * Session depuis le JWT uniquement (pas de round-trip DB).
- * Mis en cache pour la durée de la requête React — critique pour la navigation.
+ * Mis en cache pour la durée de la requête React : critique pour la navigation.
  * La vérification `actif` se fait sur les actions d'écriture.
  */
 export const getSession = cache(async (): Promise<SessionUser | null> => {
