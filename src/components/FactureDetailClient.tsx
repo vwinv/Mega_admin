@@ -127,9 +127,10 @@ function LigneEditor({
           onChange={(e) =>
             onChange({
               ...ligne,
-              details: e.target.value.split("\n").filter((s) => s.trim()),
+              details: e.target.value.split("\n"),
             })
           }
+          onKeyDown={(e) => e.stopPropagation()}
         />
       </div>
     </div>
