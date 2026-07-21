@@ -313,31 +313,35 @@ export function FacturePrintView({
               className="border border-white/30 px-3 py-2 font-semibold"
               colSpan={2}
             >
-              Sous - Total HT
+              {tauxTVA > 0 ? "Sous - Total HT" : "Total"}
             </td>
             <td className="border border-white/30 px-3 py-2 text-right font-semibold">
               {formatFcfa(totaux.totalHT)}
             </td>
           </tr>
-          <tr>
-            <td className="border border-slate-200 px-3 py-2" colSpan={2}>
-              TVA {Math.round(tauxTVA * 100)}%
-            </td>
-            <td className="border border-slate-200 px-3 py-2 text-right">
-              {formatFcfa(totaux.tva)}
-            </td>
-          </tr>
-          <tr style={{ backgroundColor: MEGA_BRAND, color: "white" }}>
-            <td
-              className="border border-white/30 px-3 py-2 font-semibold"
-              colSpan={2}
-            >
-              Sous - Total TTC
-            </td>
-            <td className="border border-white/30 px-3 py-2 text-right font-semibold">
-              {formatFcfa(totaux.totalTTC)}
-            </td>
-          </tr>
+          {tauxTVA > 0 && (
+            <>
+              <tr>
+                <td className="border border-slate-200 px-3 py-2" colSpan={2}>
+                  TVA {Math.round(tauxTVA * 100)}%
+                </td>
+                <td className="border border-slate-200 px-3 py-2 text-right">
+                  {formatFcfa(totaux.tva)}
+                </td>
+              </tr>
+              <tr style={{ backgroundColor: MEGA_BRAND, color: "white" }}>
+                <td
+                  className="border border-white/30 px-3 py-2 font-semibold"
+                  colSpan={2}
+                >
+                  Sous - Total TTC
+                </td>
+                <td className="border border-white/30 px-3 py-2 text-right font-semibold">
+                  {formatFcfa(totaux.totalTTC)}
+                </td>
+              </tr>
+            </>
+          )}
         </tbody>
       </table>
 

@@ -416,6 +416,7 @@ export async function saveFacture(
     statut?: string;
     reliquat?: number;
     reliquatLabel?: string;
+    tauxTVA?: number;
     notes?: string;
     lignes: LigneDoc[];
   }
@@ -429,7 +430,11 @@ export async function saveFacture(
   }
 
   const params = await prisma.parametre.findFirst();
-  const tauxTVA = params?.tauxTVA ?? 0.18;
+  const tauxDefaut = params?.tauxTVA ?? 0.18;
+  const tauxTVA =
+    input.tauxTVA === undefined
+      ? tauxDefaut
+      : Math.max(0, Number(input.tauxTVA) || 0);
 
   const lignesData = input.lignes.map((l, i) => ({
     ordre: i,

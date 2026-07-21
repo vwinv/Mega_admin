@@ -10,6 +10,7 @@ import { listPiecesFacture } from "@/app/actions/pieces-comptables";
 import { getSession } from "@/lib/auth";
 import { canWrite } from "@/lib/roles";
 import { computeTotauxFacture } from "@/lib/facturation";
+import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
@@ -24,6 +25,8 @@ export default async function FacturePage({
 
   if (id === "nouveau") {
     const today = new Date().toISOString().slice(0, 10);
+    const paramsDb = await prisma.parametre.findFirst();
+    const tauxDefaut = paramsDb?.tauxTVA ?? 0.18;
     return (
       <div>
         <PageHeader title="Nouvelle facture" description="Création d'une facture client" />
@@ -35,12 +38,19 @@ export default async function FacturePage({
             clientId: clients[0]?.id ?? "",
             reliquat: 0,
             reliquatLabel: "Reliquat",
-            tauxTVA: 0.18,
+            tauxTVA: 0,
             montantPaye: 0,
             statutApprobation: "APPROUVE",
             lignes: [],
-            totaux: computeTotauxFacture([], 0, 0.18, 0),
-            entreprise: null,
+            totaux: computeTotauxFacture([], 0, 0, 0),
+            entreprise: paramsDb
+              ? {
+                  entreprise: paramsDb.entreprise,
+                  emailContact: paramsDb.emailContact,
+                  telephoneContact: paramsDb.telephoneContact,
+                  tauxTVA: tauxDefaut,
+                }
+              : { entreprise: "MEGA", tauxTVA: tauxDefaut },
           }}
           clients={clients}
           pieces={[]}

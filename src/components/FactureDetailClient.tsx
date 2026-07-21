@@ -167,6 +167,7 @@ export function FactureDetailClient({
       entreprise: string;
       emailContact?: string;
       telephoneContact?: string;
+      tauxTVA?: number;
     } | null;
     clientNom?: string;
   };
@@ -196,6 +197,7 @@ export function FactureDetailClient({
   const [payMontant, setPayMontant] = useState("");
   const [payDate, setPayDate] = useState(new Date().toISOString().slice(0, 10));
   const [payMode, setPayMode] = useState("");
+  const [tauxTVA, setTauxTVA] = useState(facture.tauxTVA);
   const [saving, setSaving] = useState(false);
   const [paying, setPaying] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -203,10 +205,11 @@ export function FactureDetailClient({
   const clientNom =
     facture.clientNom ?? clients.find((c) => c.id === clientId)?.nom ?? "";
   const rel = parseInt(reliquat, 10) || 0;
+  const tauxDefaut = facture.entreprise?.tauxTVA ?? 0.18;
   const totaux = computeTotauxFacture(
     lignes,
     rel,
-    facture.tauxTVA,
+    tauxTVA,
     facture.montantPaye
   );
 
@@ -223,6 +226,7 @@ export function FactureDetailClient({
       notes,
       reliquat: rel,
       reliquatLabel,
+      tauxTVA,
       lignes: lignes.map((l, i) => ({ ...l, ordre: i })),
     });
     setSaving(false);
@@ -503,6 +507,22 @@ export function FactureDetailClient({
                   </option>
                 ))}
               </Select>
+              <Select
+                label="TVA"
+                value={tauxTVA > 0 ? String(tauxTVA) : "0"}
+                onChange={(e) => setTauxTVA(parseFloat(e.target.value) || 0)}
+              >
+                <option value="0">Sans TVA</option>
+                <option value={String(tauxDefaut)}>
+                  TVA {Math.round(tauxDefaut * 100)} %
+                </option>
+                {tauxTVA > 0 &&
+                  Math.abs(tauxTVA - tauxDefaut) > 0.0001 && (
+                    <option value={String(tauxTVA)}>
+                      TVA {Math.round(tauxTVA * 100)} % (actuel)
+                    </option>
+                  )}
+              </Select>
               {!isNew && (
                 <Select
                   label="Statut"
@@ -582,11 +602,18 @@ export function FactureDetailClient({
                 ))}
               </div>
               <div className="mt-4 space-y-1 text-right text-sm">
-                <p>HT : {formatFcfaLabel(totaux.totalHT)}</p>
-                <p>TVA : {formatFcfaLabel(totaux.tva)}</p>
-                <p className="font-semibold">
-                  TTC : {formatFcfaLabel(totaux.totalTTC)}
+                <p>
+                  {tauxTVA > 0 ? "HT" : "Total"} :{" "}
+                  {formatFcfaLabel(totaux.totalHT)}
                 </p>
+                {tauxTVA > 0 && (
+                  <>
+                    <p>TVA : {formatFcfaLabel(totaux.tva)}</p>
+                    <p className="font-semibold">
+                      TTC : {formatFcfaLabel(totaux.totalTTC)}
+                    </p>
+                  </>
+                )}
                 {rel > 0 && (
                   <>
                     <p>
@@ -627,7 +654,7 @@ export function FactureDetailClient({
           lignes={lignes}
           reliquat={rel}
           reliquatLabel={reliquatLabel}
-          tauxTVA={facture.tauxTVA}
+          tauxTVA={tauxTVA}
           totaux={totaux}
           entreprise={facture.entreprise}
         />
