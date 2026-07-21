@@ -240,6 +240,8 @@ export async function getDevisComplet(id: string) {
     date: d.date.toISOString(),
     statut: d.statut,
     notes: d.notes,
+    reliquat: d.reliquat,
+    reliquatLabel: d.reliquatLabel,
     client: d.client,
     factureId: d.facture?.id ?? null,
     lignes: d.lignes.map((l) => ({
@@ -315,6 +317,8 @@ export async function saveDevis(
     clientId: string;
     statut?: string;
     notes?: string;
+    reliquat?: number;
+    reliquatLabel?: string;
     lignes: LigneDoc[];
   }
 ): Promise<{ ok: true; id: string } | { ok: false; error: string }> {
@@ -326,6 +330,9 @@ export async function saveDevis(
   if (input.lignes.length === 0) {
     return { ok: false, error: "Ajoutez au moins une ligne." };
   }
+
+  const reliquat = Math.max(0, Math.round(input.reliquat ?? 0) || 0);
+  const reliquatLabel = input.reliquatLabel?.trim() || "Reliquat";
 
   const lignesData = input.lignes.map((l, i) => ({
     ordre: i,
@@ -346,6 +353,8 @@ export async function saveDevis(
         clientId: input.clientId,
         statut: input.statut ?? "BROUILLON",
         notes: input.notes?.trim() || null,
+        reliquat,
+        reliquatLabel,
         lignes: { create: lignesData },
       },
     });
@@ -370,6 +379,8 @@ export async function saveDevis(
       clientId: input.clientId,
       statut: input.statut ?? "BROUILLON",
       notes: input.notes?.trim() || null,
+      reliquat,
+      reliquatLabel,
       lignes: { create: lignesData },
     },
   });
@@ -493,8 +504,8 @@ export async function saveFacture(
 export async function convertirDevisEnFacture(
   devisId: string,
   numero: string,
-  reliquat = 0,
-  reliquatLabel = "Reliquat"
+  reliquat?: number,
+  reliquatLabel?: string
 ): Promise<{ ok: true; factureId: string } | { ok: false; error: string }> {
   const guard = await guardWrite();
   if (isGuardError(guard)) return guard;
@@ -510,6 +521,13 @@ export async function convertirDevisEnFacture(
   if (devis.facture) return { ok: false, error: "Ce devis est déjà facturé." };
 
   const params = await prisma.parametre.findFirst();
+  const rel =
+    reliquat !== undefined
+      ? Math.max(0, Math.round(reliquat) || 0)
+      : devis.reliquat;
+  const relLabel =
+    (reliquatLabel?.trim() || devis.reliquatLabel || "Reliquat").trim() ||
+    "Reliquat";
 
   const facture = await prisma.facture.create({
     data: {
@@ -519,8 +537,8 @@ export async function convertirDevisEnFacture(
       clientId: devis.clientId,
       devisId: devis.id,
       statut: "ENVOYE",
-      reliquat: Math.max(0, Math.round(reliquat) || 0),
-      reliquatLabel: reliquatLabel.trim() || "Reliquat",
+      reliquat: rel,
+      reliquatLabel: relLabel,
       tauxTVA: params?.tauxTVA ?? 0.18,
       statutApprobation: "EN_ATTENTE_CEO",
       demandePar: guard.nom,
@@ -558,8 +576,11 @@ export async function convertirDevisEnFacture(
 export async function enregistrerPaiementFacture(
   factureId: string,
   montant: number,
-  datePaiement?: string
-): Promise<{ ok: true } | { ok: false; error: string }> {
+  datePaiement?: string,
+  modePaiement?: string
+): Promise<
+  { ok: true; operationId: string } | { ok: false; error: string }
+> {
   const guard = await guardWrite();
   if (isGuardError(guard)) return guard;
 
@@ -589,6 +610,18 @@ export async function enregistrerPaiementFacture(
     return { ok: false, error: "Le montant dépasse le reste à payer." };
   }
 
+  const catEntree = await prisma.categorie.findFirst({
+    where: { sens: "entree" },
+    orderBy: { nom: "asc" },
+  });
+  if (!catEntree) {
+    return {
+      ok: false,
+      error:
+        "Aucune catégorie d'entrée configurée. Créez-en une dans le plan comptable.",
+    };
+  }
+
   const nouveauPaye = facture.montantPaye + montant;
   const totauxApres = computeTotauxFacture(
     facture.lignes,
@@ -603,37 +636,29 @@ export async function enregistrerPaiementFacture(
         ? "PARTIEL"
         : facture.statut;
 
-  const payDate = datePaiement
-    ? parseDate(datePaiement)
-    : new Date();
+  const payDate = datePaiement ? parseDate(datePaiement) : new Date();
+  const trancheN =
+    (await prisma.operation.count({ where: { factureId } })) + 1;
+  const numeroPiece = await nextNumeroPieceBanque(prisma, payDate);
 
-  let operationId = facture.operationId;
-
-  const catEntree = await prisma.categorie.findFirst({
-    where: { sens: "entree" },
-    orderBy: { nom: "asc" },
+  const op = await prisma.operation.create({
+    data: {
+      date: payDate,
+      libelle: `Facture ${facture.numero} · tranche ${trancheN} · ${facture.client.nom}`,
+      categorieId: catEntree.id,
+      entree: montant,
+      sortie: null,
+      numeroPiece,
+      modePaiement: modePaiement?.trim() || null,
+      factureId,
+      statutApprobation: "APPROUVE",
+      validePar: guard.nom,
+      observations:
+        totauxApres.resteAPayer > 0
+          ? `Paiement partiel (tranche ${trancheN}) · Facture ${facture.numero} · reste ${totauxApres.resteAPayer.toLocaleString("fr-FR")} FCFA`
+          : `Paiement soldé (tranche ${trancheN}) · Facture ${facture.numero}`,
+    },
   });
-  if (catEntree) {
-    const numeroPiece = await nextNumeroPieceBanque(prisma, payDate);
-    const op = await prisma.operation.create({
-      data: {
-        date: payDate,
-        libelle: `Facture ${facture.numero} · ${facture.client.nom}`,
-        categorieId: catEntree.id,
-        entree: montant,
-        sortie: null,
-        numeroPiece,
-        factureId,
-        statutApprobation: "APPROUVE",
-        validePar: guard.nom,
-        observations:
-          totauxApres.resteAPayer > 0
-            ? `Paiement partiel · Facture ${facture.numero}`
-            : `Facture ${facture.numero}`,
-      },
-    });
-    if (!operationId) operationId = op.id;
-  }
 
   await prisma.facture.update({
     where: { id: factureId },
@@ -641,7 +666,7 @@ export async function enregistrerPaiementFacture(
       montantPaye: nouveauPaye,
       datePaiement: payDate,
       statut,
-      operationId,
+      operationId: facture.operationId ?? op.id,
     },
   });
 
@@ -651,11 +676,100 @@ export async function enregistrerPaiementFacture(
     action: "UPDATE",
     entity: "Facture",
     entityId: factureId,
-    details: `Paiement ${montant.toLocaleString("fr-FR")} FCFA · ${facture.numero}`,
+    details: `Tranche ${trancheN} · ${montant.toLocaleString("fr-FR")} FCFA · ${facture.numero}`,
   });
 
   revalidate();
-  return { ok: true };
+  revalidatePath(`/facturation/factures/${factureId}`);
+  return { ok: true, operationId: op.id };
+}
+
+export type PaiementTrancheRow = {
+  id: string;
+  tranche: number;
+  date: string;
+  montant: number;
+  numeroPiece: string | null;
+  modePaiement: string | null;
+  libelle: string;
+};
+
+export async function listPaiementsFacture(
+  factureId: string
+): Promise<PaiementTrancheRow[]> {
+  const rows = await prisma.operation.findMany({
+    where: { factureId },
+    orderBy: [{ date: "asc" }, { createdAt: "asc" }],
+  });
+  return rows.map((op, i) => ({
+    id: op.id,
+    tranche: i + 1,
+    date: (op.date ?? op.createdAt).toISOString(),
+    montant: op.entree ?? 0,
+    numeroPiece: op.numeroPiece,
+    modePaiement: op.modePaiement,
+    libelle: op.libelle,
+  }));
+}
+
+export async function getRecuPaiement(operationId: string) {
+  const op = await prisma.operation.findUnique({
+    where: { id: operationId },
+    include: {
+      facture: {
+        include: {
+          client: true,
+          lignes: true,
+        },
+      },
+    },
+  });
+  if (!op?.facture) return null;
+
+  const facture = op.facture;
+  const totaux = computeTotauxFacture(
+    facture.lignes,
+    facture.reliquat,
+    facture.tauxTVA,
+    facture.montantPaye
+  );
+
+  const paiements = await prisma.operation.findMany({
+    where: { factureId: facture.id },
+    orderBy: [{ date: "asc" }, { createdAt: "asc" }],
+    select: { id: true },
+  });
+  const tranche = paiements.findIndex((p) => p.id === op.id) + 1;
+  const params = await prisma.parametre.findFirst();
+
+  return {
+    operationId: op.id,
+    tranche,
+    totalTranches: paiements.length,
+    date: (op.date ?? op.createdAt).toISOString(),
+    montant: op.entree ?? 0,
+    numeroPiece: op.numeroPiece,
+    modePaiement: op.modePaiement,
+    libelle: op.libelle,
+    validePar: op.validePar,
+    facture: {
+      id: facture.id,
+      numero: facture.numero,
+      titre: facture.titre,
+      date: facture.date.toISOString(),
+      statut: facture.statut,
+      clientNom: facture.client.nom,
+      clientAdresse: facture.client.adresse,
+      clientTelephone: facture.client.telephone,
+      clientEmail: facture.client.email,
+    },
+    totaux: {
+      totalGeneral: totaux.totalGeneral,
+      montantPaye: facture.montantPaye,
+      resteAPayer: totaux.resteAPayer,
+    },
+    entreprise: params,
+  };
 }
 
 export async function deleteDevis(

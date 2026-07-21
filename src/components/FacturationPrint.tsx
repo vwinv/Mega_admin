@@ -34,6 +34,8 @@ export function DevisPrintView({
   date,
   clientNom,
   lignes,
+  reliquat,
+  reliquatLabel,
   entreprise,
 }: {
   numero: string;
@@ -41,12 +43,20 @@ export function DevisPrintView({
   date: string;
   clientNom: string;
   lignes: LigneDoc[];
+  reliquat?: number;
+  reliquatLabel?: string;
   entreprise: Entreprise;
 }) {
   const email =
     entreprise?.emailContact ?? entreprise?.email ?? "contact@mega-sn.com";
   const tel =
     entreprise?.telephoneContact ?? entreprise?.telephone ?? "78 450 40 52";
+  const rel = reliquat ?? 0;
+  const hasReliquat = rel > 0;
+  const labelReliquat = (reliquatLabel ?? "Reliquat").trim() || "Reliquat";
+  const totalHT = lignes.reduce((s, l) => s + l.prix, 0);
+  const totalGeneral = totalHT + rel;
+  const sectionTotal = hasReliquat ? 3 : 2;
 
   return (
     <div className="facture-doc mx-auto max-w-[800px] bg-white p-8 text-black print:p-0">
@@ -77,7 +87,7 @@ export function DevisPrintView({
 
       <h2 className="mb-3 text-base font-bold">1 - Nouvelles fonctionnalités</h2>
 
-      <table className="w-full border-collapse text-sm">
+      <table className="mb-8 w-full border-collapse text-sm">
         <thead>
           <tr style={{ backgroundColor: MEGA_BRAND, color: "white" }}>
             <th className="border border-white/30 px-3 py-2 text-left font-semibold">
@@ -115,8 +125,91 @@ export function DevisPrintView({
               </td>
             </tr>
           ))}
+          <tr style={{ backgroundColor: MEGA_BRAND, color: "white" }}>
+            <td
+              className="border border-white/30 px-3 py-2 font-semibold"
+              colSpan={2}
+            >
+              Total HT
+            </td>
+            <td className="border border-white/30 px-3 py-2 text-right font-semibold">
+              {formatFcfa(totalHT)}
+            </td>
+          </tr>
         </tbody>
       </table>
+
+      {hasReliquat && (
+        <>
+          <h2 className="mb-3 text-base font-bold">
+            2 - Rappel Facture initiale
+          </h2>
+          <table className="mb-8 w-full border-collapse text-sm">
+            <thead>
+              <tr style={{ backgroundColor: MEGA_BRAND, color: "white" }}>
+                <th className="border border-white/30 px-3 py-2 text-left">
+                  Désignation
+                </th>
+                <th className="w-36 border border-white/30 px-3 py-2 text-right">
+                  Prix (FCFA)
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td className="border border-slate-200 px-3 py-2">
+                  {labelReliquat}
+                </td>
+                <td className="border border-slate-200 px-3 py-2 text-right">
+                  {formatFcfa(rel)}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+
+          <h2 className="mb-3 text-base font-bold">
+            {sectionTotal} - Total General
+          </h2>
+          <table className="mb-10 w-full border-collapse text-sm">
+            <thead>
+              <tr style={{ backgroundColor: MEGA_BRAND, color: "white" }}>
+                <th className="border border-white/30 px-3 py-2 text-left">
+                  Désignation
+                </th>
+                <th className="w-36 border border-white/30 px-3 py-2 text-right">
+                  Prix (FCFA)
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td className="border border-slate-200 px-3 py-2">
+                  {labelReliquat}
+                </td>
+                <td className="border border-slate-200 px-3 py-2 text-right">
+                  {formatFcfa(rel)}
+                </td>
+              </tr>
+              <tr style={{ backgroundColor: MEGA_BRAND, color: "white" }}>
+                <td className="border border-white/30 px-3 py-2">
+                  Nouvelles fonctionnalités
+                </td>
+                <td className="border border-white/30 px-3 py-2 text-right">
+                  {formatFcfa(totalHT)}
+                </td>
+              </tr>
+              <tr>
+                <td className="border border-slate-200 px-3 py-2 text-lg font-bold">
+                  Total
+                </td>
+                <td className="border border-slate-200 px-3 py-2 text-right text-lg font-bold">
+                  {formatFcfa(totalGeneral)}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </>
+      )}
     </div>
   );
 }

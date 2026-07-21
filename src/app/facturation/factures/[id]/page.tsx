@@ -1,7 +1,11 @@
 import { notFound } from "next/navigation";
 import { FactureDetailClient } from "@/components/FactureDetailClient";
 import { PageHeader } from "@/components/ui";
-import { getFactureComplet, listClients } from "@/app/actions/facturation";
+import {
+  getFactureComplet,
+  listClients,
+  listPaiementsFacture,
+} from "@/app/actions/facturation";
 import { listPiecesFacture } from "@/app/actions/pieces-comptables";
 import { getSession } from "@/lib/auth";
 import { canWrite } from "@/lib/roles";
@@ -40,6 +44,7 @@ export default async function FacturePage({
           }}
           clients={clients}
           pieces={[]}
+          paiements={[]}
           canEdit={session ? canWrite(session.role) : false}
         />
       </div>
@@ -48,7 +53,10 @@ export default async function FacturePage({
 
   const facture = await getFactureComplet(id);
   if (!facture) notFound();
-  const pieces = await listPiecesFacture(id);
+  const [pieces, paiements] = await Promise.all([
+    listPiecesFacture(id),
+    listPaiementsFacture(id),
+  ]);
 
   return (
     <div>
@@ -81,6 +89,7 @@ export default async function FacturePage({
         }}
         clients={clients}
         pieces={pieces}
+        paiements={paiements}
         canEdit={session ? canWrite(session.role) : false}
       />
     </div>

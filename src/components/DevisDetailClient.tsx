@@ -161,6 +161,8 @@ export function DevisDetailClient({
     notes?: string | null;
     clientId: string;
     factureId?: string | null;
+    reliquat?: number;
+    reliquatLabel?: string;
     lignes: LigneDoc[];
     totalHT: number;
     entreprise: {
@@ -185,8 +187,10 @@ export function DevisDetailClient({
   const [lignes, setLignes] = useState<LigneDoc[]>(
     devis.lignes.length > 0 ? devis.lignes : [emptyLigne(0)]
   );
-  const [reliquat, setReliquat] = useState("0");
-  const [reliquatLabel, setReliquatLabel] = useState("Reliquat");
+  const [reliquat, setReliquat] = useState(String(devis.reliquat ?? 0));
+  const [reliquatLabel, setReliquatLabel] = useState(
+    devis.reliquatLabel || "Reliquat"
+  );
   const [factureNumero, setFactureNumero] = useState("");
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -194,6 +198,7 @@ export function DevisDetailClient({
   const clientNom =
     devis.clientNom ?? clients.find((c) => c.id === clientId)?.nom ?? "";
   const totalHT = lignes.reduce((s, l) => s + l.prix, 0);
+  const rel = parseInt(reliquat, 10) || 0;
 
   async function handleSave(e: FormEvent) {
     e.preventDefault();
@@ -206,6 +211,8 @@ export function DevisDetailClient({
       clientId,
       statut,
       notes,
+      reliquat: rel,
+      reliquatLabel,
       lignes: lignes.map((l, i) => ({ ...l, ordre: i })),
     });
     setSaving(false);
@@ -226,13 +233,7 @@ export function DevisDetailClient({
       setError("Indiquez le numéro de facture.");
       return;
     }
-    const rel = parseInt(reliquat, 10) || 0;
-    const result = await convertirDevisEnFacture(
-      devis.id,
-      factureNumero,
-      rel,
-      reliquatLabel
-    );
+    const result = await convertirDevisEnFacture(devis.id, factureNumero);
     if (!result.ok) {
       setError(result.error);
       return;
@@ -289,21 +290,6 @@ export function DevisDetailClient({
                 className="!w-40"
                 placeholder="ex. F2026-001"
                 required
-              />
-              <Input
-                type="number"
-                min={0}
-                label="Précédent reliquat"
-                value={reliquat}
-                onChange={(e) => setReliquat(e.target.value)}
-                className="!w-36"
-                placeholder="0"
-              />
-              <Input
-                label="Libellé reliquat"
-                value={reliquatLabel}
-                onChange={(e) => setReliquatLabel(e.target.value)}
-                className="!w-44"
               />
               <Button onClick={handleConvert}>Convertir en facture</Button>
             </div>
@@ -363,6 +349,41 @@ export function DevisDetailClient({
               )}
             </div>
 
+            <div className="rounded-xl border border-amber-200 bg-amber-50/60 p-4">
+              <h3 className="font-semibold text-slate-900">
+                Précédent reliquat
+              </h3>
+              <p className="mt-1 text-sm text-slate-600">
+                Rappel affiché sur le devis en section{" "}
+                <strong>2 - Rappel Facture initiale</strong>. Reporté
+                automatiquement à la conversion en facture.
+              </p>
+              <div className="mt-4 grid gap-4 md:grid-cols-2">
+                <Input
+                  label="Montant (FCFA)"
+                  type="number"
+                  min={0}
+                  step={1}
+                  value={reliquat}
+                  onChange={(e) => setReliquat(e.target.value)}
+                  placeholder="0"
+                />
+                <Input
+                  label="Libellé affiché"
+                  value={reliquatLabel}
+                  onChange={(e) => setReliquatLabel(e.target.value)}
+                  placeholder="Reliquat"
+                />
+              </div>
+              {rel > 0 && (
+                <p className="mt-3 text-sm font-medium text-amber-800">
+                  {reliquatLabel || "Reliquat"} : {formatFcfaLabel(rel)} · Total
+                  avec nouvelles fonctionnalités :{" "}
+                  {formatFcfaLabel(totalHT + rel)}
+                </p>
+              )}
+            </div>
+
             <div>
               <div className="mb-3 flex items-center justify-between">
                 <h3 className="font-semibold">Lignes</h3>
@@ -393,9 +414,16 @@ export function DevisDetailClient({
                   />
                 ))}
               </div>
-              <p className="mt-4 text-right text-sm font-semibold">
-                Total HT : {formatFcfaLabel(totalHT)}
-              </p>
+              <div className="mt-4 space-y-1 text-right text-sm">
+                <p className="font-semibold">
+                  Total HT : {formatFcfaLabel(totalHT)}
+                </p>
+                {rel > 0 && (
+                  <p className="font-semibold text-amber-800">
+                    Total général : {formatFcfaLabel(totalHT + rel)}
+                  </p>
+                )}
+              </div>
             </div>
 
             <Textarea
@@ -420,6 +448,8 @@ export function DevisDetailClient({
           date={date}
           clientNom={clientNom}
           lignes={lignes}
+          reliquat={rel}
+          reliquatLabel={reliquatLabel}
           entreprise={devis.entreprise}
         />
       )}

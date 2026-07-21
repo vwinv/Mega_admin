@@ -1,0 +1,3 @@
+-- AlterTable
+ALTER TABLE "Devis" ADD COLUMN "reliquat" INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE "Devis" ADD COLUMN "reliquatLabel" TEXT NOT NULL DEFAULT 'Reliquat';

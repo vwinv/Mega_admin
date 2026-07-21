@@ -8,11 +8,13 @@ import {
   enregistrerPaiementFacture,
   saveFacture,
   type ClientRow,
+  type PaiementTrancheRow,
 } from "@/app/actions/facturation";
 import { FacturePrintView } from "@/components/FacturationPrint";
 import { PiecesComptablesPanel } from "@/components/PiecesComptablesPanel";
 import type { PieceComptableRow } from "@/app/actions/pieces-comptables";
 import { formatFcfa, formatFcfaLabel } from "@/lib/format";
+import { MODES_PAIEMENT } from "@/lib/constants";
 import {
   STATUTS_FACTURE,
   STATUT_FACTURE_LABELS,
@@ -138,6 +140,7 @@ export function FactureDetailClient({
   facture,
   clients,
   pieces,
+  paiements = [],
   canEdit,
 }: {
   facture: {
@@ -168,6 +171,7 @@ export function FactureDetailClient({
   };
   clients: ClientRow[];
   pieces: PieceComptableRow[];
+  paiements?: PaiementTrancheRow[];
   canEdit: boolean;
 }) {
   const router = useRouter();
@@ -190,7 +194,9 @@ export function FactureDetailClient({
   const [showPay, setShowPay] = useState(false);
   const [payMontant, setPayMontant] = useState("");
   const [payDate, setPayDate] = useState(new Date().toISOString().slice(0, 10));
+  const [payMode, setPayMode] = useState("");
   const [saving, setSaving] = useState(false);
+  const [paying, setPaying] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
   const clientNom =
@@ -235,18 +241,23 @@ export function FactureDetailClient({
     e.preventDefault();
     if (!facture.id) return;
     setError(null);
+    setPaying(true);
     const montant = parseInt(payMontant, 10) || 0;
     const result = await enregistrerPaiementFacture(
       facture.id,
       montant,
-      payDate
+      payDate,
+      payMode || undefined
     );
+    setPaying(false);
     if (!result.ok) {
       setError(result.error);
       return;
     }
     setShowPay(false);
-    router.refresh();
+    router.push(
+      `/facturation/factures/${facture.id}/recu/${result.operationId}`
+    );
   }
 
   async function handleDelete() {
@@ -297,7 +308,9 @@ export function FactureDetailClient({
             </Button>
           )}
           {canEdit && !isNew && !editMode && totaux.resteAPayer > 0 && facture.statutApprobation === "APPROUVE" && (
-            <Button onClick={() => setShowPay(true)}>Enregistrer paiement</Button>
+            <Button onClick={() => setShowPay(true)}>
+              Enregistrer une tranche
+            </Button>
           )}
           {canEdit && !isNew && !editMode && (
             <Button variant="secondary" onClick={() => setEditMode(true)}>
@@ -308,11 +321,6 @@ export function FactureDetailClient({
             <Button variant="danger" onClick={handleDelete} disabled={deleting}>
               {deleting ? "Suppression…" : "Supprimer"}
             </Button>
-          )}
-          {facture.operationId && (
-            <Link href="/journal">
-              <Button variant="ghost">Voir au journal</Button>
-            </Link>
           )}
         </div>
       </div>
@@ -379,6 +387,56 @@ export function FactureDetailClient({
                 </p>
               </div>
             )}
+          </div>
+        </Card>
+      )}
+
+      {!isNew && paiements.length > 0 && (
+        <Card className="no-print overflow-hidden !p-0">
+          <div className="border-b border-slate-100 px-4 py-3">
+            <h3 className="font-semibold text-slate-900">
+              Paiements par tranches
+            </h3>
+            <p className="text-xs text-slate-500">
+              {paiements.length} tranche{paiements.length > 1 ? "s" : ""} ·{" "}
+              {formatFcfaLabel(facture.montantPaye)} encaissés · reste{" "}
+              {formatFcfaLabel(totaux.resteAPayer)}
+            </p>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="data-table w-full text-sm">
+              <thead>
+                <tr>
+                  <th>Tranche</th>
+                  <th>Date</th>
+                  <th>Montant</th>
+                  <th>N° pièce</th>
+                  <th>Mode</th>
+                  <th />
+                </tr>
+              </thead>
+              <tbody>
+                {paiements.map((p) => (
+                  <tr key={p.id}>
+                    <td className="font-medium">#{p.tranche}</td>
+                    <td>{new Date(p.date).toLocaleDateString("fr-FR")}</td>
+                    <td className="font-semibold text-mega-700">
+                      {formatFcfaLabel(p.montant)}
+                    </td>
+                    <td className="font-mono text-xs">{p.numeroPiece ?? "—"}</td>
+                    <td>{p.modePaiement ?? "—"}</td>
+                    <td>
+                      <Link
+                        href={`/facturation/factures/${facture.id}/recu/${p.id}`}
+                        className="text-sm font-medium text-mega-700 hover:underline"
+                      >
+                        Reçu
+                      </Link>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </Card>
       )}
@@ -577,19 +635,20 @@ export function FactureDetailClient({
       <Modal
         open={showPay}
         onClose={() => setShowPay(false)}
-        title="Enregistrer un paiement"
-        description={`Reste à payer : ${formatFcfaLabel(totaux.resteAPayer)}`}
+        title="Enregistrer une tranche de paiement"
+        description={`Reste à payer : ${formatFcfaLabel(totaux.resteAPayer)} · prochaine tranche #${paiements.length + 1}`}
         footer={
           <FormActions
             formId="pay-form"
             onCancel={() => setShowPay(false)}
-            submitLabel="Valider le paiement"
+            submitLabel={paying ? "Enregistrement…" : "Valider et ouvrir le reçu"}
+            loading={paying}
           />
         }
       >
         <form id="pay-form" onSubmit={handlePay} className="space-y-4">
           <Input
-            label="Montant (FCFA)"
+            label="Montant de la tranche (FCFA)"
             type="number"
             min={1}
             max={totaux.resteAPayer}
@@ -604,9 +663,21 @@ export function FactureDetailClient({
             onChange={(e) => setPayDate(e.target.value)}
             required
           />
+          <Select
+            label="Mode de paiement"
+            value={payMode}
+            onChange={(e) => setPayMode(e.target.value)}
+          >
+            <option value="">Choisir (optionnel)</option>
+            {MODES_PAIEMENT.map((m) => (
+              <option key={m} value={m}>
+                {m}
+              </option>
+            ))}
+          </Select>
           <p className="text-xs text-slate-500">
-            Une écriture d&apos;entrée sera créée au journal avec un n° de pièce
-            automatique (BN-année-xxxx).
+            Après validation, le reçu de paiement s&apos;ouvre. Une écriture
+            d&apos;entrée est créée au journal (n° BN-…).
           </p>
         </form>
       </Modal>
