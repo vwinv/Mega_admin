@@ -191,7 +191,7 @@ export function DevisDetailClient({
   const [reliquatLabel, setReliquatLabel] = useState(
     devis.reliquatLabel || "Reliquat"
   );
-  const [factureNumero, setFactureNumero] = useState("");
+  const [converting, setConverting] = useState(false);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
@@ -229,11 +229,17 @@ export function DevisDetailClient({
 
   async function handleConvert() {
     if (!devis.id) return;
-    if (!factureNumero.trim()) {
-      setError("Indiquez le numéro de facture.");
+    if (
+      !confirm(
+        "Convertir ce devis en facture ? Un numéro de facture sera attribué automatiquement."
+      )
+    ) {
       return;
     }
-    const result = await convertirDevisEnFacture(devis.id, factureNumero);
+    setError(null);
+    setConverting(true);
+    const result = await convertirDevisEnFacture(devis.id);
+    setConverting(false);
     if (!result.ok) {
       setError(result.error);
       return;
@@ -282,17 +288,9 @@ export function DevisDetailClient({
             </Button>
           )}
           {canEdit && devis.id && !devis.factureId && devis.statut !== "FACTURE" && (
-            <div className="flex flex-wrap items-end gap-2">
-              <Input
-                label="N° facture"
-                value={factureNumero}
-                onChange={(e) => setFactureNumero(e.target.value)}
-                className="!w-40"
-                placeholder="ex. F2026-001"
-                required
-              />
-              <Button onClick={handleConvert}>Convertir en facture</Button>
-            </div>
+            <Button onClick={handleConvert} disabled={converting}>
+              {converting ? "Conversion…" : "Convertir en facture"}
+            </Button>
           )}
           {devis.factureId && (
             <Link href={`/facturation/factures/${devis.factureId}`}>

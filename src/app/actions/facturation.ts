@@ -8,6 +8,7 @@ import {
   computeTotauxFacture,
   detailsToJson,
   nextNumeroDevis,
+  nextNumeroFacture,
   parseDetailsJson,
   type LigneDoc,
 } from "@/lib/facturation";
@@ -18,6 +19,13 @@ const PATHS = ["/facturation", "/clients", "/journal", "/tresorerie", "/impots",
 
 function revalidate() {
   for (const p of PATHS) revalidatePath(p);
+}
+
+async function allocateNumeroFacture(): Promise<string> {
+  return nextNumeroFacture(async () => {
+    const rows = await prisma.facture.findMany({ select: { numero: true } });
+    return rows.map((r) => r.numero);
+  });
 }
 
 export type ClientRow = {
@@ -437,10 +445,6 @@ export async function saveFacture(
     const existing = await prisma.facture.findUnique({ where: { id: input.id } });
     if (!existing) return { ok: false, error: "Facture introuvable." };
 
-    const numero = (input.numero ?? existing.numero).trim();
-    const numeroErr = await ensureNumeroFactureUnique(prisma, numero, input.id);
-    if (numeroErr) return { ok: false, error: numeroErr };
-
     const approval = approvalFieldsForFacture(statutFinal, guard.nom, {
       statut: existing.statut,
       statutApprobation: existing.statutApprobation,
@@ -450,7 +454,6 @@ export async function saveFacture(
     await prisma.facture.update({
       where: { id: input.id },
       data: {
-        numero,
         titre: input.titre?.trim() || null,
         date: parseDate(input.date),
         clientId: input.clientId,
@@ -467,7 +470,7 @@ export async function saveFacture(
     return { ok: true, id: input.id };
   }
 
-  const numero = input.numero?.trim() ?? "";
+  const numero = await allocateNumeroFacture();
   const numeroErr = await ensureNumeroFactureUnique(prisma, numero);
   if (numeroErr) return { ok: false, error: numeroErr };
 
@@ -502,16 +505,10 @@ export async function saveFacture(
 }
 
 export async function convertirDevisEnFacture(
-  devisId: string,
-  numero: string,
-  reliquat?: number,
-  reliquatLabel?: string
+  devisId: string
 ): Promise<{ ok: true; factureId: string } | { ok: false; error: string }> {
   const guard = await guardWrite();
   if (isGuardError(guard)) return guard;
-
-  const numeroErr = await ensureNumeroFactureUnique(prisma, numero);
-  if (numeroErr) return { ok: false, error: numeroErr };
 
   const devis = await prisma.devis.findUnique({
     where: { id: devisId },
@@ -520,25 +517,22 @@ export async function convertirDevisEnFacture(
   if (!devis) return { ok: false, error: "Devis introuvable." };
   if (devis.facture) return { ok: false, error: "Ce devis est déjà facturé." };
 
+  const numero = await allocateNumeroFacture();
+  const numeroErr = await ensureNumeroFactureUnique(prisma, numero);
+  if (numeroErr) return { ok: false, error: numeroErr };
+
   const params = await prisma.parametre.findFirst();
-  const rel =
-    reliquat !== undefined
-      ? Math.max(0, Math.round(reliquat) || 0)
-      : devis.reliquat;
-  const relLabel =
-    (reliquatLabel?.trim() || devis.reliquatLabel || "Reliquat").trim() ||
-    "Reliquat";
 
   const facture = await prisma.facture.create({
     data: {
-      numero: numero.trim(),
+      numero,
       titre: devis.titre,
       date: new Date(),
       clientId: devis.clientId,
       devisId: devis.id,
       statut: "ENVOYE",
-      reliquat: rel,
-      reliquatLabel: relLabel,
+      reliquat: devis.reliquat,
+      reliquatLabel: devis.reliquatLabel || "Reliquat",
       tauxTVA: params?.tauxTVA ?? 0.18,
       statutApprobation: "EN_ATTENTE_CEO",
       demandePar: guard.nom,

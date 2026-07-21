@@ -103,11 +103,17 @@ export async function nextNumeroDevis(
   return formatNumeroDoc("", n);
 }
 
+/** Prochain n° facture : F0001, F0002… */
 export async function nextNumeroFacture(
-  count: () => Promise<number>
+  listNumeros: () => Promise<string[]>
 ): Promise<string> {
-  const n = (await count()) + 1;
-  return formatNumeroDoc("F", n);
+  const numeros = await listNumeros();
+  let max = 0;
+  for (const raw of numeros) {
+    const m = /^F(\d+)$/i.exec(raw.trim());
+    if (m) max = Math.max(max, parseInt(m[1], 10));
+  }
+  return formatNumeroDoc("F", max + 1);
 }
 
 /** Facture soumise au client (hors brouillon / annulée) → approbation CEO requise. */

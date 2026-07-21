@@ -69,12 +69,12 @@ export function FacturationClient({
       </div>
 
       <Alert type="info">
-        <strong>Facturation :</strong> créez une facture avec un{" "}
-        <strong>n° saisi manuellement</strong>, puis archivez le PDF ou le scan
-        sur la fiche facture (section « Archivage · pièces comptables »). Le
-        journal attribue automatiquement les n° de pièce{" "}
-        <span className="font-mono">BN-…</span>. Les clients se gèrent dans
-        le menu <Link href="/clients" className="font-medium underline">Clients</Link>.
+        <strong>Facturation :</strong> les n° de facture sont attribués{" "}
+        <strong>automatiquement</strong> (F0001, F0002…). Archivez le PDF ou le
+        scan sur la fiche facture (section « Archivage · pièces comptables »).
+        Le journal attribue automatiquement les n° de pièce{" "}
+        <span className="font-mono">BN-…</span>. Les clients se gèrent dans le
+        menu <Link href="/clients" className="font-medium underline">Clients</Link>.
       </Alert>
 
       <div className="flex flex-wrap items-center justify-between gap-3">

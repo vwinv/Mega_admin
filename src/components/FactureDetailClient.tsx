@@ -215,7 +215,6 @@ export function FactureDetailClient({
     setSaving(true);
     const result = await saveFacture({
       id: facture.id,
-      numero,
       titre,
       date,
       clientId,
@@ -445,9 +444,9 @@ export function FactureDetailClient({
 
       {isNew && (
         <Alert type="info">
-          Saisissez le <strong>n° de facture manuellement</strong> (ex. F2026-0042),
-          puis enregistrez. Vous pourrez ensuite joindre des pièces comptables
-          (PDF, scan…).
+          Le <strong>n° de facture</strong> sera attribué automatiquement à
+          l&apos;enregistrement (ex. F0001). Vous pourrez ensuite joindre des
+          pièces comptables (PDF, scan…).
         </Alert>
       )}
 
@@ -470,13 +469,14 @@ export function FactureDetailClient({
         <Card>
           <form id="facture-form" onSubmit={handleSave} className="space-y-6">
             <div className="grid gap-4 md:grid-cols-2">
-              <Input
-                label="N° facture"
-                value={numero}
-                onChange={(e) => setNumero(e.target.value)}
-                placeholder="ex. F2026-0042"
-                required
-              />
+              {!isNew && (
+                <Input
+                  label="N° facture"
+                  value={numero}
+                  readOnly
+                  className="bg-slate-50 font-mono"
+                />
+              )}
               <Input
                 label="Titre (optionnel)"
                 value={titre}
