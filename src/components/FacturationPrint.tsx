@@ -26,6 +26,8 @@ function LigneDetails({ items }: { items: string[] }) {
   );
 }
 
+const ROW_ALT = "#faf6f0";
+
 export function DevisPrintView({
   numero,
   titre,
@@ -64,11 +66,10 @@ export function DevisPrintView({
       </div>
 
       <h1 className="mb-2 text-lg font-bold">
-        DEVIS N°{numero} - {titre}
+        DEVIS N°{numero} – {titre}
       </h1>
       <p className="mb-1 text-sm">
-        <strong>Date :</strong>{" "}
-        {new Date(date).toLocaleDateString("fr-FR")}
+        <strong>Date :</strong> {new Date(date).toLocaleDateString("fr-FR")}
       </p>
       <p className="mb-6 text-sm">
         <strong>Client :</strong> {clientNom}
@@ -83,7 +84,7 @@ export function DevisPrintView({
               Désignation
             </th>
             <th className="w-20 border border-white/30 px-3 py-2 text-center font-semibold">
-              Durée
+              Duree
             </th>
             <th className="w-32 border border-white/30 px-3 py-2 text-right font-semibold">
               Prix (FCFA)
@@ -91,13 +92,15 @@ export function DevisPrintView({
           </tr>
         </thead>
         <tbody>
-          {lignes.map((l) => (
+          {lignes.map((l, i) => (
             <tr
               key={l.ordre}
               style={
                 l.styleAccent
                   ? { backgroundColor: MEGA_BRAND, color: "white" }
-                  : undefined
+                  : i % 2 === 1
+                    ? { backgroundColor: ROW_ALT }
+                    : undefined
               }
             >
               <td className="border border-slate-200 px-3 py-3 align-top">
@@ -150,6 +153,9 @@ export function FacturePrintView({
     entreprise?.emailContact ?? entreprise?.email ?? "contact@mega-sn.com";
   const tel =
     entreprise?.telephoneContact ?? entreprise?.telephone ?? "78 450 40 52";
+  const hasReliquat = reliquat > 0;
+  const labelReliquat = reliquatLabel.trim() || "Reliquat";
+  const sectionTotal = hasReliquat ? 3 : 2;
 
   return (
     <div className="facture-doc mx-auto max-w-[800px] bg-white p-8 text-black print:p-0">
@@ -170,11 +176,10 @@ export function FacturePrintView({
 
       <h1 className="mb-2 text-lg font-bold">
         FACTURE N°{numero}
-        {titre ? ` - ${titre}` : ""}
+        {titre ? ` – ${titre}` : ""}
       </h1>
       <p className="mb-1 text-sm">
-        <strong>Date :</strong>{" "}
-        {new Date(date).toLocaleDateString("fr-FR")}
+        <strong>Date :</strong> {new Date(date).toLocaleDateString("fr-FR")}
       </p>
       <p className="mb-6 text-sm">
         <strong>Client :</strong> {clientNom}
@@ -184,34 +189,37 @@ export function FacturePrintView({
 
       <table className="mb-8 w-full border-collapse text-sm">
         <tbody>
-          {lignes.map((l) => (
-            <tr key={l.ordre}>
-              <td
-                className="border border-slate-200 px-3 py-3 align-top"
-                style={
-                  l.styleAccent
-                    ? { backgroundColor: MEGA_BRAND, color: "white" }
-                    : undefined
-                }
-                colSpan={2}
-              >
-                <strong>{l.designation}</strong>
-                <LigneDetails items={l.details} />
-              </td>
-              <td
-                className="w-36 border border-slate-200 px-3 py-3 text-right align-top font-medium"
-                style={
-                  l.styleAccent
-                    ? { backgroundColor: MEGA_BRAND, color: "white" }
-                    : undefined
-                }
-              >
-                {formatFcfa(l.prix)}
-              </td>
-            </tr>
-          ))}
+          {lignes.map((l, i) => {
+            const accent = l.styleAccent;
+            const bg = accent
+              ? { backgroundColor: MEGA_BRAND, color: "white" as const }
+              : i % 2 === 1
+                ? { backgroundColor: ROW_ALT }
+                : undefined;
+            return (
+              <tr key={l.ordre}>
+                <td
+                  className="border border-slate-200 px-3 py-3 align-top"
+                  style={bg}
+                  colSpan={2}
+                >
+                  <strong>{l.designation}</strong>
+                  <LigneDetails items={l.details} />
+                </td>
+                <td
+                  className="w-36 border border-slate-200 px-3 py-3 text-right align-top font-medium"
+                  style={bg}
+                >
+                  {formatFcfa(l.prix)}
+                </td>
+              </tr>
+            );
+          })}
           <tr style={{ backgroundColor: MEGA_BRAND, color: "white" }}>
-            <td className="border border-white/30 px-3 py-2 font-semibold" colSpan={2}>
+            <td
+              className="border border-white/30 px-3 py-2 font-semibold"
+              colSpan={2}
+            >
               Sous - Total HT
             </td>
             <td className="border border-white/30 px-3 py-2 text-right font-semibold">
@@ -227,7 +235,10 @@ export function FacturePrintView({
             </td>
           </tr>
           <tr style={{ backgroundColor: MEGA_BRAND, color: "white" }}>
-            <td className="border border-white/30 px-3 py-2 font-semibold" colSpan={2}>
+            <td
+              className="border border-white/30 px-3 py-2 font-semibold"
+              colSpan={2}
+            >
               Sous - Total TTC
             </td>
             <td className="border border-white/30 px-3 py-2 text-right font-semibold">
@@ -237,9 +248,11 @@ export function FacturePrintView({
         </tbody>
       </table>
 
-      {reliquat > 0 && (
+      {hasReliquat && (
         <>
-          <h2 className="mb-3 text-base font-bold">2 - Rappel Facture initiale</h2>
+          <h2 className="mb-3 text-base font-bold">
+            2 - Rappel Facture initiale
+          </h2>
           <table className="mb-8 w-full border-collapse text-sm">
             <thead>
               <tr style={{ backgroundColor: MEGA_BRAND, color: "white" }}>
@@ -253,7 +266,9 @@ export function FacturePrintView({
             </thead>
             <tbody>
               <tr>
-                <td className="border border-slate-200 px-3 py-2">{reliquatLabel}</td>
+                <td className="border border-slate-200 px-3 py-2">
+                  {labelReliquat}
+                </td>
                 <td className="border border-slate-200 px-3 py-2 text-right">
                   {formatFcfa(reliquat)}
                 </td>
@@ -263,7 +278,9 @@ export function FacturePrintView({
         </>
       )}
 
-      <h2 className="mb-3 text-base font-bold">3 - Total Général</h2>
+      <h2 className="mb-3 text-base font-bold">
+        {sectionTotal} - Total General
+      </h2>
       <table className="mb-10 w-full border-collapse text-sm">
         <thead>
           <tr style={{ backgroundColor: MEGA_BRAND, color: "white" }}>
@@ -276,16 +293,20 @@ export function FacturePrintView({
           </tr>
         </thead>
         <tbody>
-          {reliquat > 0 && (
+          {hasReliquat && (
             <tr>
-              <td className="border border-slate-200 px-3 py-2">{reliquatLabel}</td>
+              <td className="border border-slate-200 px-3 py-2">
+                {labelReliquat}
+              </td>
               <td className="border border-slate-200 px-3 py-2 text-right">
                 {formatFcfa(reliquat)}
               </td>
             </tr>
           )}
           <tr style={{ backgroundColor: MEGA_BRAND, color: "white" }}>
-            <td className="border border-white/30 px-3 py-2">Nouvelles fonctionnalités</td>
+            <td className="border border-white/30 px-3 py-2">
+              Nouvelles fonctionnalités
+            </td>
             <td className="border border-white/30 px-3 py-2 text-right">
               {formatFcfa(totaux.totalTTC)}
             </td>
@@ -302,10 +323,19 @@ export function FacturePrintView({
       </table>
 
       <div>
-        <p className="mb-6 font-semibold">Signatures des différentes parties :</p>
+        <p className="mb-6 font-semibold">
+          Signatures des différentes parties :
+        </p>
         <div className="grid grid-cols-2 gap-12">
           <div>
-            <div className="mb-2 h-16 border-b border-slate-400" />
+            <div className="mb-2 flex h-16 items-end justify-center border-b border-slate-400">
+              <span
+                className="select-none pb-1 font-serif text-2xl italic"
+                style={{ color: MEGA_BRAND }}
+              >
+                MEGA
+              </span>
+            </div>
             <p className="text-center text-sm font-medium">MEGA</p>
           </div>
           <div>

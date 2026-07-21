@@ -14,7 +14,7 @@ import {
 import { ensureNumeroFactureUnique, nextNumeroPieceBanque } from "@/lib/numero-piece";
 import { prisma } from "@/lib/prisma";
 
-const PATHS = ["/facturation", "/journal", "/tresorerie", "/impots", "/"];
+const PATHS = ["/facturation", "/clients", "/journal", "/tresorerie", "/impots", "/"];
 
 function revalidate() {
   for (const p of PATHS) revalidatePath(p);
@@ -25,6 +25,7 @@ export type ClientRow = {
   nom: string;
   email: string | null;
   telephone: string | null;
+  adresse: string | null;
 };
 
 export type DevisRow = {
@@ -66,6 +67,7 @@ export async function listClients(): Promise<ClientRow[]> {
     nom: c.nom,
     email: c.email,
     telephone: c.telephone,
+    adresse: c.adresse,
   }));
 }
 
@@ -99,6 +101,83 @@ export async function createClient(input: {
 
   revalidate();
   return { ok: true, id: c.id };
+}
+
+export async function updateClient(
+  id: string,
+  input: {
+    nom: string;
+    email?: string;
+    telephone?: string;
+    adresse?: string;
+  }
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const guard = await guardWrite();
+  if (isGuardError(guard)) return guard;
+  if (!input.nom.trim()) return { ok: false, error: "Le nom du client est obligatoire." };
+
+  const existing = await prisma.clientFacturation.findUnique({ where: { id } });
+  if (!existing) return { ok: false, error: "Client introuvable." };
+
+  const c = await prisma.clientFacturation.update({
+    where: { id },
+    data: {
+      nom: input.nom.trim(),
+      email: input.email?.trim() || null,
+      telephone: input.telephone?.trim() || null,
+      adresse: input.adresse?.trim() || null,
+    },
+  });
+
+  await logAudit({
+    userId: guard.id,
+    userNom: guard.nom,
+    action: "UPDATE",
+    entity: "Client",
+    entityId: c.id,
+    details: c.nom,
+  });
+
+  revalidate();
+  return { ok: true };
+}
+
+export async function deleteClient(
+  id: string
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const guard = await guardWrite();
+  if (isGuardError(guard)) return guard;
+
+  const existing = await prisma.clientFacturation.findUnique({
+    where: { id },
+    include: {
+      _count: { select: { devis: true, factures: true } },
+    },
+  });
+  if (!existing) return { ok: false, error: "Client introuvable." };
+
+  const used = existing._count.devis + existing._count.factures;
+  if (used > 0) {
+    return {
+      ok: false,
+      error:
+        "Ce client a des devis ou factures liés et ne peut pas être supprimé.",
+    };
+  }
+
+  await prisma.clientFacturation.delete({ where: { id } });
+
+  await logAudit({
+    userId: guard.id,
+    userNom: guard.nom,
+    action: "DELETE",
+    entity: "Client",
+    entityId: id,
+    details: existing.nom,
+  });
+
+  revalidate();
+  return { ok: true };
 }
 
 export async function listDevis(): Promise<DevisRow[]> {
@@ -365,7 +444,7 @@ export async function saveFacture(
         date: parseDate(input.date),
         clientId: input.clientId,
         statut: statutFinal,
-        reliquat: input.reliquat ?? 0,
+        reliquat: Math.max(0, Math.round(input.reliquat ?? 0) || 0),
         reliquatLabel: input.reliquatLabel?.trim() || "Reliquat",
         notes: input.notes?.trim() || null,
         tauxTVA,
@@ -389,7 +468,7 @@ export async function saveFacture(
       date: parseDate(input.date),
       clientId: input.clientId,
       statut: statutFinal,
-      reliquat: input.reliquat ?? 0,
+      reliquat: Math.max(0, Math.round(input.reliquat ?? 0) || 0),
       reliquatLabel: input.reliquatLabel?.trim() || "Reliquat",
       notes: input.notes?.trim() || null,
       tauxTVA,
@@ -414,7 +493,8 @@ export async function saveFacture(
 export async function convertirDevisEnFacture(
   devisId: string,
   numero: string,
-  reliquat = 0
+  reliquat = 0,
+  reliquatLabel = "Reliquat"
 ): Promise<{ ok: true; factureId: string } | { ok: false; error: string }> {
   const guard = await guardWrite();
   if (isGuardError(guard)) return guard;
@@ -439,7 +519,8 @@ export async function convertirDevisEnFacture(
       clientId: devis.clientId,
       devisId: devis.id,
       statut: "ENVOYE",
-      reliquat,
+      reliquat: Math.max(0, Math.round(reliquat) || 0),
+      reliquatLabel: reliquatLabel.trim() || "Reliquat",
       tauxTVA: params?.tauxTVA ?? 0.18,
       statutApprobation: "EN_ATTENTE_CEO",
       demandePar: guard.nom,

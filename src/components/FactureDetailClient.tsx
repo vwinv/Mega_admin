@@ -181,7 +181,9 @@ export function FactureDetailClient({
   const [statut, setStatut] = useState(facture.statut);
   const [notes, setNotes] = useState(facture.notes ?? "");
   const [reliquat, setReliquat] = useState(String(facture.reliquat));
-  const [reliquatLabel, setReliquatLabel] = useState(facture.reliquatLabel);
+  const [reliquatLabel, setReliquatLabel] = useState(
+    facture.reliquatLabel || "Reliquat"
+  );
   const [lignes, setLignes] = useState<LigneDoc[]>(
     facture.lignes.length > 0 ? facture.lignes : [emptyLigne(0)]
   );
@@ -455,18 +457,40 @@ export function FactureDetailClient({
                   ))}
                 </Select>
               )}
-              <Input
-                label="Reliquat (FCFA)"
-                type="number"
-                min={0}
-                value={reliquat}
-                onChange={(e) => setReliquat(e.target.value)}
-              />
-              <Input
-                label="Libellé reliquat"
-                value={reliquatLabel}
-                onChange={(e) => setReliquatLabel(e.target.value)}
-              />
+            </div>
+
+            <div className="rounded-xl border border-amber-200 bg-amber-50/60 p-4">
+              <h3 className="font-semibold text-slate-900">
+                Précédent reliquat
+              </h3>
+              <p className="mt-1 text-sm text-slate-600">
+                Affiché sur la facture générée en section{" "}
+                <strong>2 - Rappel Facture initiale</strong>, puis intégré au{" "}
+                <strong>Total General</strong> (reliquat + TTC).
+              </p>
+              <div className="mt-4 grid gap-4 md:grid-cols-2">
+                <Input
+                  label="Montant (FCFA)"
+                  type="number"
+                  min={0}
+                  step={1}
+                  value={reliquat}
+                  onChange={(e) => setReliquat(e.target.value)}
+                  placeholder="0"
+                />
+                <Input
+                  label="Libellé affiché"
+                  value={reliquatLabel}
+                  onChange={(e) => setReliquatLabel(e.target.value)}
+                  placeholder="Reliquat"
+                />
+              </div>
+              {rel > 0 && (
+                <p className="mt-3 text-sm font-medium text-amber-800">
+                  {reliquatLabel || "Reliquat"} : {formatFcfaLabel(rel)} →
+                  Total général {formatFcfaLabel(totaux.totalGeneral)}
+                </p>
+              )}
             </div>
 
             <div>
@@ -501,11 +525,19 @@ export function FactureDetailClient({
               <div className="mt-4 space-y-1 text-right text-sm">
                 <p>HT : {formatFcfaLabel(totaux.totalHT)}</p>
                 <p>TVA : {formatFcfaLabel(totaux.tva)}</p>
-                <p className="font-semibold">TTC : {formatFcfaLabel(totaux.totalTTC)}</p>
+                <p className="font-semibold">
+                  TTC : {formatFcfaLabel(totaux.totalTTC)}
+                </p>
                 {rel > 0 && (
-                  <p className="font-semibold">
-                    Total général : {formatFcfaLabel(totaux.totalGeneral)}
-                  </p>
+                  <>
+                    <p>
+                      {reliquatLabel || "Reliquat"} :{" "}
+                      {formatFcfaLabel(rel)}
+                    </p>
+                    <p className="text-base font-semibold text-slate-900">
+                      Total général : {formatFcfaLabel(totaux.totalGeneral)}
+                    </p>
+                  </>
                 )}
               </div>
             </div>

@@ -64,7 +64,7 @@ export const AUDIT_ENTITY_LABELS: Record<string, string> = {
   Rapprochement: "Rapprochement",
   Checklist: "Checklist",
   Import: "Import Excel",
-  Client: "Client facturation",
+  Client: "Client",
   Devis: "Devis",
   Facture: "Facture",
 };

@@ -1,29 +1,23 @@
 "use client";
 
-import { FormEvent, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import {
-  createClient,
-  type ClientRow,
-  type DevisRow,
-  type FactureRow,
-} from "@/app/actions/facturation";
+import { useState } from "react";
+import type { DevisRow, FactureRow } from "@/app/actions/facturation";
 import { formatFcfaLabel } from "@/lib/format";
 import {
   STATUT_DEVIS_LABELS,
   STATUT_FACTURE_LABELS,
 } from "@/lib/facturation";
 import { STATUT_APPROBATION_LABELS } from "@/lib/approbation";
-import { Alert, Button, Card, Fab, FormActions, Input, Modal } from "@/components/ui";
+import { Alert, Button, Card, Fab } from "@/components/ui";
 
-type Tab = "devis" | "factures" | "clients";
+type Tab = "devis" | "factures";
 
 export function FacturationClient({
   stats,
   devis,
   factures,
-  clients,
   canEdit,
 }: {
   stats: {
@@ -32,40 +26,17 @@ export function FacturationClient({
     enAttente: number;
     devisCount: number;
     facturesCount: number;
-    clientsCount: number;
   };
   devis: DevisRow[];
   factures: FactureRow[];
-  clients: ClientRow[];
   canEdit: boolean;
 }) {
   const [tab, setTab] = useState<Tab>("devis");
-  const [showClient, setShowClient] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const router = useRouter();
-
-  async function handleClient(e: FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    setError(null);
-    const fd = new FormData(e.currentTarget);
-    const result = await createClient({
-      nom: String(fd.get("nom") ?? ""),
-      email: String(fd.get("email") ?? "") || undefined,
-      telephone: String(fd.get("telephone") ?? "") || undefined,
-      adresse: String(fd.get("adresse") ?? "") || undefined,
-    });
-    if (!result.ok) {
-      setError(result.error);
-      return;
-    }
-    setShowClient(false);
-    router.refresh();
-  }
 
   const tabs: { id: Tab; label: string; count: number }[] = [
     { id: "devis", label: "Devis", count: stats.devisCount },
     { id: "factures", label: "Factures", count: stats.facturesCount },
-    { id: "clients", label: "Clients", count: stats.clientsCount },
   ];
 
   return (
@@ -101,7 +72,9 @@ export function FacturationClient({
         <strong>Facturation :</strong> créez une facture avec un{" "}
         <strong>n° saisi manuellement</strong>, puis archivez le PDF ou le scan
         sur la fiche facture (section « Archivage · pièces comptables »). Le
-        journal attribue automatiquement les n° de pièce <span className="font-mono">BN-…</span>.
+        journal attribue automatiquement les n° de pièce{" "}
+        <span className="font-mono">BN-…</span>. Les clients se gèrent dans
+        le menu <Link href="/clients" className="font-medium underline">Clients</Link>.
       </Alert>
 
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -125,9 +98,6 @@ export function FacturationClient({
 
         {canEdit && (
           <div className="flex flex-wrap gap-2">
-            <Button variant="secondary" onClick={() => setShowClient(true)}>
-              + Client
-            </Button>
             <Link href="/facturation/devis/nouveau">
               <Button>+ Devis</Button>
             </Link>
@@ -164,7 +134,9 @@ export function FacturationClient({
                   devis.map((d) => (
                     <tr key={d.id}>
                       <td className="font-mono text-xs">{d.numero}</td>
-                      <td className="max-w-[200px] truncate font-medium">{d.titre}</td>
+                      <td className="max-w-[200px] truncate font-medium">
+                        {d.titre}
+                      </td>
                       <td>{d.clientNom}</td>
                       <td>{new Date(d.date).toLocaleDateString("fr-FR")}</td>
                       <td>{formatFcfaLabel(d.totalHT)}</td>
@@ -274,82 +246,14 @@ export function FacturationClient({
         </Card>
       )}
 
-      {tab === "clients" && (
-        <Card className="overflow-hidden !p-0">
-          <div className="overflow-x-auto">
-            <table className="data-table w-full text-sm">
-              <thead>
-                <tr>
-                  <th>Nom</th>
-                  <th>Email</th>
-                  <th>Téléphone</th>
-                </tr>
-              </thead>
-              <tbody>
-                {clients.length === 0 ? (
-                  <tr>
-                    <td colSpan={3} className="py-8 text-center text-slate-500">
-                      Aucun client.
-                    </td>
-                  </tr>
-                ) : (
-                  clients.map((c) => (
-                    <tr key={c.id}>
-                      <td className="font-medium">{c.nom}</td>
-                      <td>{c.email ?? ""}</td>
-                      <td>{c.telephone ?? ""}</td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-        </Card>
-      )}
-
-      <Modal
-        open={showClient}
-        onClose={() => {
-          setShowClient(false);
-          setError(null);
-        }}
-        title="Nouveau client"
-        footer={
-          <FormActions
-            formId="client-form"
-            onCancel={() => setShowClient(false)}
-            submitLabel="Enregistrer"
-          />
-        }
-      >
-        {error && (
-          <div className="mb-4">
-            <Alert type="error">{error}</Alert>
-          </div>
-        )}
-        <form id="client-form" onSubmit={handleClient} className="space-y-4">
-          <Input name="nom" label="Nom *" required />
-          <Input name="email" label="Email" type="email" />
-          <Input name="telephone" label="Téléphone" />
-          <Input name="adresse" label="Adresse" />
-        </form>
-      </Modal>
-
       {canEdit && (
         <Fab
           onClick={() => {
-            if (tab === "clients") setShowClient(true);
-            else if (tab === "factures")
+            if (tab === "factures")
               router.push("/facturation/factures/nouveau");
             else router.push("/facturation/devis/nouveau");
           }}
-          label={
-            tab === "clients"
-              ? "Nouveau client"
-              : tab === "factures"
-                ? "Nouvelle facture"
-                : "Nouveau devis"
-          }
+          label={tab === "factures" ? "Nouvelle facture" : "Nouveau devis"}
         />
       )}
     </div>

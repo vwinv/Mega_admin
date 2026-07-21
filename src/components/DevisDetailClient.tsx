@@ -186,6 +186,7 @@ export function DevisDetailClient({
     devis.lignes.length > 0 ? devis.lignes : [emptyLigne(0)]
   );
   const [reliquat, setReliquat] = useState("0");
+  const [reliquatLabel, setReliquatLabel] = useState("Reliquat");
   const [factureNumero, setFactureNumero] = useState("");
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -226,7 +227,12 @@ export function DevisDetailClient({
       return;
     }
     const rel = parseInt(reliquat, 10) || 0;
-    const result = await convertirDevisEnFacture(devis.id, factureNumero, rel);
+    const result = await convertirDevisEnFacture(
+      devis.id,
+      factureNumero,
+      rel,
+      reliquatLabel
+    );
     if (!result.ok) {
       setError(result.error);
       return;
@@ -287,10 +293,17 @@ export function DevisDetailClient({
               <Input
                 type="number"
                 min={0}
-                label="Reliquat"
+                label="Précédent reliquat"
                 value={reliquat}
                 onChange={(e) => setReliquat(e.target.value)}
-                className="!w-32"
+                className="!w-36"
+                placeholder="0"
+              />
+              <Input
+                label="Libellé reliquat"
+                value={reliquatLabel}
+                onChange={(e) => setReliquatLabel(e.target.value)}
+                className="!w-44"
               />
               <Button onClick={handleConvert}>Convertir en facture</Button>
             </div>

@@ -2,7 +2,6 @@ import { FacturationClient } from "@/components/FacturationClient";
 import { PageHeader } from "@/components/ui";
 import {
   getFacturationStats,
-  listClients,
   listDevis,
   listFactures,
 } from "@/app/actions/facturation";
@@ -13,11 +12,10 @@ export const dynamic = "force-dynamic";
 
 export default async function FacturationPage() {
   const session = await getSession();
-  const [stats, devis, factures, clients] = await Promise.all([
+  const [stats, devis, factures] = await Promise.all([
     getFacturationStats(),
     listDevis(),
     listFactures(),
-    listClients(),
   ]);
 
   return (
@@ -30,7 +28,6 @@ export default async function FacturationPage() {
         stats={stats}
         devis={devis}
         factures={factures}
-        clients={clients}
         canEdit={session ? canWrite(session.role) : false}
       />
     </div>

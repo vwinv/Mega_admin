@@ -23,6 +23,7 @@ import {
   Upload,
   User,
   UserCog,
+  Users,
   Wallet,
   X,
 } from "lucide-react";
@@ -58,6 +59,7 @@ const navGroups: { title: string; items: NavItem[] }[] = [
     items: [
       { href: "/journal", label: "Journal", icon: Receipt },
       { href: "/caisse", label: "Petite caisse", icon: Wallet },
+      { href: "/clients", label: "Clients", icon: Users },
       { href: "/facturation", label: "Facturation", icon: FileText },
       { href: "/archives", label: "Archives", icon: Archive },
     ],
