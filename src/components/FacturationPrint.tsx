@@ -1,8 +1,14 @@
 "use client";
 
 import { formatFcfa } from "@/lib/format";
-import { MEGA_BRAND, type LigneDoc } from "@/lib/facturation";
+import {
+  MEGA_BRAND,
+  MEGA_ROW_ALT,
+  MEGA_ROW_BORDER,
+  type LigneDoc,
+} from "@/lib/facturation";
 import { MegaLogo } from "@/components/MegaLogo";
+import type { CSSProperties } from "react";
 
 type Entreprise = {
   entreprise: string;
@@ -12,13 +18,47 @@ type Entreprise = {
   telephone?: string;
 } | null;
 
-function LigneDetails({ items }: { items: string[] }) {
+const cellBorder = `1px solid ${MEGA_ROW_BORDER}`;
+const cellBorderWhite = "1px solid rgba(255,255,255,0.45)";
+
+const styleHeader: CSSProperties = {
+  backgroundColor: MEGA_BRAND,
+  color: "#ffffff",
+};
+
+const styleAccent: CSSProperties = {
+  backgroundColor: MEGA_BRAND,
+  color: "#ffffff",
+};
+
+const styleAlt: CSSProperties = {
+  backgroundColor: MEGA_ROW_ALT,
+  color: "#111111",
+};
+
+const styleWhite: CSSProperties = {
+  backgroundColor: "#ffffff",
+  color: "#111111",
+};
+
+function rowStyle(index: number, accent: boolean): CSSProperties {
+  if (accent) return styleAccent;
+  return index % 2 === 1 ? styleAlt : styleWhite;
+}
+
+function LigneDetails({
+  items,
+  onAccent,
+}: {
+  items: string[];
+  onAccent?: boolean;
+}) {
   if (items.length === 0) return null;
   return (
     <ul className="mt-1 list-none space-y-0.5 pl-0 text-sm">
       {items.map((item) => (
         <li key={item} className="flex gap-2">
-          <span className="text-[10px]">○</span>
+          <span style={{ color: onAccent ? "#ffffff" : undefined }}>-</span>
           <span>{item}</span>
         </li>
       ))}
@@ -26,7 +66,74 @@ function LigneDetails({ items }: { items: string[] }) {
   );
 }
 
-const ROW_ALT = "#faf6f0";
+function ConditionsBlock() {
+  return (
+    <div className="mt-8 space-y-4 text-sm leading-relaxed text-slate-800">
+      <div>
+        <p className="font-semibold">Conditions de paiement :</p>
+        <p>40 % à la commande, le reste à la livraison finale.</p>
+      </div>
+
+      <div>
+        <p className="font-semibold">Hébergement :</p>
+        <p>• Pré-requis :</p>
+        <ul className="ml-4 list-none space-y-0.5">
+          <li>- Serveur cloud / VPS/ PaaS</li>
+          <li>- Runtime Node.js v18 minimum</li>
+        </ul>
+        <p className="mt-1">
+          • Les accès aux comptes développeurs Play Store et Apple Store doivent
+          nous être fournis
+        </p>
+      </div>
+
+      <div>
+        <p className="font-semibold">Garantie :</p>
+        <p>
+          Une période de 15 jours est incluse pour la correction d’éventuels
+          bugs mineurs après la livraison.
+        </p>
+      </div>
+
+      <div>
+        <p className="font-semibold">Réalisation :</p>
+        <p>
+          Après validation du cahier de charge et démarrage de la production,
+          tout changement fera l’objet d’une facture de maintenance
+          complémentaire.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function SignaturesBlock() {
+  return (
+    <div className="mt-10">
+      <p className="mb-6 font-semibold">
+        Signatures des différentes parties :
+      </p>
+      <div className="grid grid-cols-2 gap-12">
+        <div>
+          <div className="mb-2 flex h-24 items-end justify-center border-b border-slate-400 px-2">
+            <img
+              src="/signature.png"
+              alt="Signature MEGA"
+              width={220}
+              height={90}
+              className="max-h-[88px] w-auto object-contain object-bottom mix-blend-multiply"
+            />
+          </div>
+          <p className="text-center text-sm font-medium">MEGA</p>
+        </div>
+        <div>
+          <div className="mb-2 h-24 border-b border-slate-400" />
+          <p className="text-center text-sm font-medium">Le Client</p>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export function DevisPrintView({
   numero,
@@ -87,52 +194,71 @@ export function DevisPrintView({
 
       <h2 className="mb-3 text-base font-bold">1 - Nouvelles fonctionnalités</h2>
 
-      <table className="mb-8 w-full border-collapse text-sm">
+      <table
+        className={`w-full border-collapse text-sm ${hasReliquat ? "mb-8" : "mb-4"}`}
+      >
         <thead>
-          <tr style={{ backgroundColor: MEGA_BRAND, color: "white" }}>
-            <th className="border border-white/30 px-3 py-2 text-left font-semibold">
+          <tr>
+            <th
+              className="px-3 py-2 text-left font-semibold"
+              style={{ ...styleHeader, border: cellBorderWhite }}
+            >
               Désignation
             </th>
-            <th className="w-20 border border-white/30 px-3 py-2 text-center font-semibold">
+            <th
+              className="w-20 px-3 py-2 text-center font-semibold"
+              style={{ ...styleHeader, border: cellBorderWhite }}
+            >
               Duree
             </th>
-            <th className="w-32 border border-white/30 px-3 py-2 text-right font-semibold">
+            <th
+              className="w-32 px-3 py-2 text-right font-semibold"
+              style={{ ...styleHeader, border: cellBorderWhite }}
+            >
               Prix (FCFA)
             </th>
           </tr>
         </thead>
         <tbody>
-          {lignes.map((l, i) => (
-            <tr
-              key={l.ordre}
-              style={
-                l.styleAccent
-                  ? { backgroundColor: MEGA_BRAND, color: "white" }
-                  : i % 2 === 1
-                    ? { backgroundColor: ROW_ALT }
-                    : undefined
-              }
-            >
-              <td className="border border-slate-200 px-3 py-3 align-top">
-                <strong>{l.designation}</strong>
-                <LigneDetails items={l.details} />
-              </td>
-              <td className="border border-slate-200 px-3 py-3 text-center align-top">
-                {l.duree ?? ""}
-              </td>
-              <td className="border border-slate-200 px-3 py-3 text-right align-top font-medium">
-                {formatFcfa(l.prix)}
-              </td>
-            </tr>
-          ))}
-          <tr style={{ backgroundColor: MEGA_BRAND, color: "white" }}>
+          {lignes.map((l, i) => {
+            const bg = rowStyle(i, l.styleAccent);
+            const border = l.styleAccent ? cellBorderWhite : cellBorder;
+            return (
+              <tr key={l.ordre}>
+                <td
+                  className="px-3 py-3 align-top"
+                  style={{ ...bg, border }}
+                >
+                  <strong>{l.designation}</strong>
+                  <LigneDetails items={l.details} onAccent={l.styleAccent} />
+                </td>
+                <td
+                  className="px-3 py-3 text-center align-top"
+                  style={{ ...bg, border }}
+                >
+                  {l.duree ?? ""}
+                </td>
+                <td
+                  className="px-3 py-3 text-right align-top font-medium"
+                  style={{ ...bg, border }}
+                >
+                  {formatFcfa(l.prix)}
+                </td>
+              </tr>
+            );
+          })}
+          <tr>
             <td
-              className="border border-white/30 px-3 py-2 font-semibold"
+              className="px-3 py-2 font-semibold"
               colSpan={2}
+              style={{ ...styleHeader, border: cellBorderWhite }}
             >
               Total HT
             </td>
-            <td className="border border-white/30 px-3 py-2 text-right font-semibold">
+            <td
+              className="px-3 py-2 text-right font-semibold"
+              style={{ ...styleHeader, border: cellBorderWhite }}
+            >
               {formatFcfa(totalHT)}
             </td>
           </tr>
@@ -146,21 +272,33 @@ export function DevisPrintView({
           </h2>
           <table className="mb-8 w-full border-collapse text-sm">
             <thead>
-              <tr style={{ backgroundColor: MEGA_BRAND, color: "white" }}>
-                <th className="border border-white/30 px-3 py-2 text-left">
+              <tr>
+                <th
+                  className="px-3 py-2 text-left font-semibold"
+                  style={{ ...styleHeader, border: cellBorderWhite }}
+                >
                   Désignation
                 </th>
-                <th className="w-36 border border-white/30 px-3 py-2 text-right">
+                <th
+                  className="w-36 px-3 py-2 text-right font-semibold"
+                  style={{ ...styleHeader, border: cellBorderWhite }}
+                >
                   Prix (FCFA)
                 </th>
               </tr>
             </thead>
             <tbody>
               <tr>
-                <td className="border border-slate-200 px-3 py-2">
+                <td
+                  className="px-3 py-2"
+                  style={{ ...styleAlt, border: cellBorder }}
+                >
                   {labelReliquat}
                 </td>
-                <td className="border border-slate-200 px-3 py-2 text-right">
+                <td
+                  className="px-3 py-2 text-right"
+                  style={{ ...styleAlt, border: cellBorder }}
+                >
                   {formatFcfa(rel)}
                 </td>
               </tr>
@@ -170,39 +308,63 @@ export function DevisPrintView({
           <h2 className="mb-3 text-base font-bold">
             {sectionTotal} - Total General
           </h2>
-          <table className="mb-10 w-full border-collapse text-sm">
+          <table className="mb-4 w-full border-collapse text-sm">
             <thead>
-              <tr style={{ backgroundColor: MEGA_BRAND, color: "white" }}>
-                <th className="border border-white/30 px-3 py-2 text-left">
+              <tr>
+                <th
+                  className="px-3 py-2 text-left font-semibold"
+                  style={{ ...styleHeader, border: cellBorderWhite }}
+                >
                   Désignation
                 </th>
-                <th className="w-36 border border-white/30 px-3 py-2 text-right">
+                <th
+                  className="w-36 px-3 py-2 text-right font-semibold"
+                  style={{ ...styleHeader, border: cellBorderWhite }}
+                >
                   Prix (FCFA)
                 </th>
               </tr>
             </thead>
             <tbody>
               <tr>
-                <td className="border border-slate-200 px-3 py-2">
+                <td
+                  className="px-3 py-2"
+                  style={{ ...styleAlt, border: cellBorder }}
+                >
                   {labelReliquat}
                 </td>
-                <td className="border border-slate-200 px-3 py-2 text-right">
+                <td
+                  className="px-3 py-2 text-right"
+                  style={{ ...styleAlt, border: cellBorder }}
+                >
                   {formatFcfa(rel)}
                 </td>
               </tr>
-              <tr style={{ backgroundColor: MEGA_BRAND, color: "white" }}>
-                <td className="border border-white/30 px-3 py-2">
+              <tr>
+                <td
+                  className="px-3 py-2"
+                  style={{ ...styleHeader, border: cellBorderWhite }}
+                >
                   Nouvelles fonctionnalités
                 </td>
-                <td className="border border-white/30 px-3 py-2 text-right">
+                <td
+                  className="px-3 py-2 text-right"
+                  style={{ ...styleHeader, border: cellBorderWhite }}
+                >
                   {formatFcfa(totalHT)}
                 </td>
               </tr>
               <tr>
-                <td className="border border-slate-200 px-3 py-2 text-lg font-bold">
+                <td
+                  className="px-3 py-2 text-lg font-bold"
+                  style={{ ...styleAlt, border: cellBorder }}
+                >
                   Total
                 </td>
-                <td className="border border-slate-200 px-3 py-2 text-right text-lg font-bold">
+                <td
+                  className="px-3 py-2 text-right text-lg font-bold"
+                  style={{ ...styleAlt, border: cellBorder }}
+                >
                   {formatFcfa(totalGeneral)}
                 </td>
               </tr>
@@ -210,6 +372,9 @@ export function DevisPrintView({
           </table>
         </>
       )}
+
+      <ConditionsBlock />
+      <SignaturesBlock />
     </div>
   );
 }
@@ -283,60 +448,71 @@ export function FacturePrintView({
       <table className="mb-8 w-full border-collapse text-sm">
         <tbody>
           {lignes.map((l, i) => {
-            const accent = l.styleAccent;
-            const bg = accent
-              ? { backgroundColor: MEGA_BRAND, color: "white" as const }
-              : i % 2 === 1
-                ? { backgroundColor: ROW_ALT }
-                : undefined;
+            const bg = rowStyle(i, l.styleAccent);
+            const border = l.styleAccent ? cellBorderWhite : cellBorder;
             return (
               <tr key={l.ordre}>
                 <td
-                  className="border border-slate-200 px-3 py-3 align-top"
-                  style={bg}
+                  className="px-3 py-3 align-top"
+                  style={{ ...bg, border }}
                   colSpan={2}
                 >
                   <strong>{l.designation}</strong>
-                  <LigneDetails items={l.details} />
+                  <LigneDetails items={l.details} onAccent={l.styleAccent} />
                 </td>
                 <td
-                  className="w-36 border border-slate-200 px-3 py-3 text-right align-top font-medium"
-                  style={bg}
+                  className="w-36 px-3 py-3 text-right align-top font-medium"
+                  style={{ ...bg, border }}
                 >
                   {formatFcfa(l.prix)}
                 </td>
               </tr>
             );
           })}
-          <tr style={{ backgroundColor: MEGA_BRAND, color: "white" }}>
+          <tr>
             <td
-              className="border border-white/30 px-3 py-2 font-semibold"
+              className="px-3 py-2 font-semibold"
               colSpan={2}
+              style={{ ...styleHeader, border: cellBorderWhite }}
             >
               {tauxTVA > 0 ? "Sous - Total HT" : "Total"}
             </td>
-            <td className="border border-white/30 px-3 py-2 text-right font-semibold">
+            <td
+              className="px-3 py-2 text-right font-semibold"
+              style={{ ...styleHeader, border: cellBorderWhite }}
+            >
               {formatFcfa(totaux.totalHT)}
             </td>
           </tr>
           {tauxTVA > 0 && (
             <>
               <tr>
-                <td className="border border-slate-200 px-3 py-2" colSpan={2}>
+                <td
+                  className="px-3 py-2"
+                  colSpan={2}
+                  style={{ ...styleWhite, border: cellBorder }}
+                >
                   TVA {Math.round(tauxTVA * 100)}%
                 </td>
-                <td className="border border-slate-200 px-3 py-2 text-right">
+                <td
+                  className="px-3 py-2 text-right"
+                  style={{ ...styleWhite, border: cellBorder }}
+                >
                   {formatFcfa(totaux.tva)}
                 </td>
               </tr>
-              <tr style={{ backgroundColor: MEGA_BRAND, color: "white" }}>
+              <tr>
                 <td
-                  className="border border-white/30 px-3 py-2 font-semibold"
+                  className="px-3 py-2 font-semibold"
                   colSpan={2}
+                  style={{ ...styleHeader, border: cellBorderWhite }}
                 >
                   Sous - Total TTC
                 </td>
-                <td className="border border-white/30 px-3 py-2 text-right font-semibold">
+                <td
+                  className="px-3 py-2 text-right font-semibold"
+                  style={{ ...styleHeader, border: cellBorderWhite }}
+                >
                   {formatFcfa(totaux.totalTTC)}
                 </td>
               </tr>
@@ -352,21 +528,33 @@ export function FacturePrintView({
           </h2>
           <table className="mb-8 w-full border-collapse text-sm">
             <thead>
-              <tr style={{ backgroundColor: MEGA_BRAND, color: "white" }}>
-                <th className="border border-white/30 px-3 py-2 text-left">
+              <tr>
+                <th
+                  className="px-3 py-2 text-left font-semibold"
+                  style={{ ...styleHeader, border: cellBorderWhite }}
+                >
                   Désignation
                 </th>
-                <th className="w-36 border border-white/30 px-3 py-2 text-right">
+                <th
+                  className="w-36 px-3 py-2 text-right font-semibold"
+                  style={{ ...styleHeader, border: cellBorderWhite }}
+                >
                   Prix (FCFA)
                 </th>
               </tr>
             </thead>
             <tbody>
               <tr>
-                <td className="border border-slate-200 px-3 py-2">
+                <td
+                  className="px-3 py-2"
+                  style={{ ...styleAlt, border: cellBorder }}
+                >
                   {labelReliquat}
                 </td>
-                <td className="border border-slate-200 px-3 py-2 text-right">
+                <td
+                  className="px-3 py-2 text-right"
+                  style={{ ...styleAlt, border: cellBorder }}
+                >
                   {formatFcfa(reliquat)}
                 </td>
               </tr>
@@ -378,13 +566,19 @@ export function FacturePrintView({
       <h2 className="mb-3 text-base font-bold">
         {sectionTotal} - Total General
       </h2>
-      <table className="mb-10 w-full border-collapse text-sm">
+      <table className="mb-4 w-full border-collapse text-sm">
         <thead>
-          <tr style={{ backgroundColor: MEGA_BRAND, color: "white" }}>
-            <th className="border border-white/30 px-3 py-2 text-left">
+          <tr>
+            <th
+              className="px-3 py-2 text-left font-semibold"
+              style={{ ...styleHeader, border: cellBorderWhite }}
+            >
               Désignation
             </th>
-            <th className="w-36 border border-white/30 px-3 py-2 text-right">
+            <th
+              className="w-36 px-3 py-2 text-right font-semibold"
+              style={{ ...styleHeader, border: cellBorderWhite }}
+            >
               Prix (FCFA)
             </th>
           </tr>
@@ -392,55 +586,53 @@ export function FacturePrintView({
         <tbody>
           {hasReliquat && (
             <tr>
-              <td className="border border-slate-200 px-3 py-2">
+              <td
+                className="px-3 py-2"
+                style={{ ...styleAlt, border: cellBorder }}
+              >
                 {labelReliquat}
               </td>
-              <td className="border border-slate-200 px-3 py-2 text-right">
+              <td
+                className="px-3 py-2 text-right"
+                style={{ ...styleAlt, border: cellBorder }}
+              >
                 {formatFcfa(reliquat)}
               </td>
             </tr>
           )}
-          <tr style={{ backgroundColor: MEGA_BRAND, color: "white" }}>
-            <td className="border border-white/30 px-3 py-2">
+          <tr>
+            <td
+              className="px-3 py-2"
+              style={{ ...styleHeader, border: cellBorderWhite }}
+            >
               Nouvelles fonctionnalités
             </td>
-            <td className="border border-white/30 px-3 py-2 text-right">
+            <td
+              className="px-3 py-2 text-right"
+              style={{ ...styleHeader, border: cellBorderWhite }}
+            >
               {formatFcfa(totaux.totalTTC)}
             </td>
           </tr>
           <tr>
-            <td className="border border-slate-200 px-3 py-2 text-lg font-bold">
+            <td
+              className="px-3 py-2 text-lg font-bold"
+              style={{ ...styleAlt, border: cellBorder }}
+            >
               Total
             </td>
-            <td className="border border-slate-200 px-3 py-2 text-right text-lg font-bold">
+            <td
+              className="px-3 py-2 text-right text-lg font-bold"
+              style={{ ...styleAlt, border: cellBorder }}
+            >
               {formatFcfa(totaux.totalGeneral)}
             </td>
           </tr>
         </tbody>
       </table>
 
-      <div>
-        <p className="mb-6 font-semibold">
-          Signatures des différentes parties :
-        </p>
-        <div className="grid grid-cols-2 gap-12">
-          <div>
-            <div className="mb-2 flex h-16 items-end justify-center border-b border-slate-400">
-              <span
-                className="select-none pb-1 font-serif text-2xl italic"
-                style={{ color: MEGA_BRAND }}
-              >
-                MEGA
-              </span>
-            </div>
-            <p className="text-center text-sm font-medium">MEGA</p>
-          </div>
-          <div>
-            <div className="mb-2 h-16 border-b border-slate-400" />
-            <p className="text-center text-sm font-medium">Le Client</p>
-          </div>
-        </div>
-      </div>
+      <ConditionsBlock />
+      <SignaturesBlock />
     </div>
   );
 }

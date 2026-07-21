@@ -214,18 +214,19 @@ export function RecuPaiementClient({ recu }: { recu: RecuData }) {
           </p>
           <div className="grid grid-cols-2 gap-12">
             <div>
-              <div className="mb-2 flex h-16 items-end justify-center border-b border-slate-400">
-                <span
-                  className="select-none pb-1 font-serif text-2xl italic"
-                  style={{ color: MEGA_BRAND }}
-                >
-                  MEGA
-                </span>
+              <div className="mb-2 flex h-24 items-end justify-center border-b border-slate-400 px-2">
+                <img
+                  src="/signature.png"
+                  alt="Signature MEGA"
+                  width={220}
+                  height={90}
+                  className="max-h-[88px] w-auto object-contain object-bottom mix-blend-multiply"
+                />
               </div>
               <p className="text-center text-sm font-medium">MEGA</p>
             </div>
             <div>
-              <div className="mb-2 h-16 border-b border-slate-400" />
+              <div className="mb-2 h-24 border-b border-slate-400" />
               <p className="text-center text-sm font-medium">Le Client</p>
             </div>
           </div>

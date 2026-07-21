@@ -30,7 +30,9 @@ export const STATUT_FACTURE_LABELS: Record<string, string> = {
   ANNULE: "Annulée",
 };
 
-export const MEGA_BRAND = "#d65a5a";
+export const MEGA_BRAND = "#c55a51";
+export const MEGA_ROW_ALT = "#fff9f4";
+export const MEGA_ROW_BORDER = "#e8d5d2";
 
 export type LigneDoc = {
   id?: string;
