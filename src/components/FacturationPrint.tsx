@@ -27,13 +27,7 @@ function DocLogo({ height = 120 }: { height?: number }) {
       width={width}
       height={height}
       className="block h-auto shrink-0 object-contain object-left"
-      style={{
-        height,
-        width,
-        aspectRatio: "88 / 393",
-        // Fond noir du PNG → transparent sur fond blanc
-        mixBlendMode: "screen",
-      }}
+      style={{ height, width, aspectRatio: "88 / 393" }}
     />
   );
 }
