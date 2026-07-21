@@ -1,11 +1,29 @@
 "use client";
 
 import Link from "next/link";
-import { MegaLogo } from "@/components/MegaLogo";
 import { Button } from "@/components/ui";
 import { formatFcfa, formatFcfaLabel } from "@/lib/format";
-import { MEGA_BRAND } from "@/lib/facturation";
-import { STATUT_FACTURE_LABELS } from "@/lib/facturation";
+import { MEGA_BRAND, STATUT_FACTURE_LABELS } from "@/lib/facturation";
+
+function DocLogo({ width = 72 }: { width?: number }) {
+  const height = Math.round((width * 393) / 88);
+  return (
+    <div className="relative shrink-0" style={{ width, height }}>
+      <img
+        src="/mega-logo.png"
+        alt="MEGA"
+        width={height}
+        height={width}
+        className="absolute left-1/2 top-1/2 origin-center object-contain"
+        style={{
+          width: height,
+          height: width,
+          transform: "translate(-50%, -50%) rotate(90deg)",
+        }}
+      />
+    </div>
+  );
+}
 
 type RecuData = {
   operationId: string;
@@ -61,7 +79,7 @@ export function RecuPaiementClient({ recu }: { recu: RecuData }) {
 
       <div className="facture-doc mx-auto max-w-[720px] bg-white p-8 text-black print:p-0">
         <div className="mb-8 flex gap-6">
-          <MegaLogo width={220} priority />
+          <DocLogo width={72} />
           <div className="text-sm leading-relaxed">
             <p>
               <strong>Établi par :</strong> MEGA

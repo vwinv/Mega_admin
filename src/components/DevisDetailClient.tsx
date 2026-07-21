@@ -164,12 +164,14 @@ export function DevisDetailClient({
     factureId?: string | null;
     reliquat?: number;
     reliquatLabel?: string;
+    tauxTVA?: number;
     lignes: LigneDoc[];
     totalHT: number;
     entreprise: {
       entreprise: string;
       emailContact?: string;
       telephoneContact?: string;
+      tauxTVA?: number;
     } | null;
     clientNom?: string;
   };
@@ -192,6 +194,7 @@ export function DevisDetailClient({
   const [reliquatLabel, setReliquatLabel] = useState(
     devis.reliquatLabel || "Reliquat"
   );
+  const [tauxTVA, setTauxTVA] = useState(devis.tauxTVA ?? 0);
   const [converting, setConverting] = useState(false);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -200,6 +203,10 @@ export function DevisDetailClient({
     devis.clientNom ?? clients.find((c) => c.id === clientId)?.nom ?? "";
   const totalHT = lignes.reduce((s, l) => s + l.prix, 0);
   const rel = parseInt(reliquat, 10) || 0;
+  const tauxDefaut = devis.entreprise?.tauxTVA ?? 0.18;
+  const tva = Math.round(totalHT * tauxTVA);
+  const totalTTC = totalHT + tva;
+  const totalGeneral = totalTTC + rel;
 
   async function handleSave(e: FormEvent) {
     e.preventDefault();
@@ -214,6 +221,7 @@ export function DevisDetailClient({
       notes,
       reliquat: rel,
       reliquatLabel,
+      tauxTVA,
       lignes: lignes.map((l, i) => ({ ...l, ordre: i })),
     });
     setSaving(false);
@@ -333,6 +341,22 @@ export function DevisDetailClient({
                   </option>
                 ))}
               </Select>
+              <Select
+                label="TVA"
+                value={tauxTVA > 0 ? String(tauxTVA) : "0"}
+                onChange={(e) => setTauxTVA(parseFloat(e.target.value) || 0)}
+              >
+                <option value="0">Sans TVA</option>
+                <option value={String(tauxDefaut)}>
+                  TVA {Math.round(tauxDefaut * 100)} %
+                </option>
+                {tauxTVA > 0 &&
+                  Math.abs(tauxTVA - tauxDefaut) > 0.0001 && (
+                    <option value={String(tauxTVA)}>
+                      TVA {Math.round(tauxTVA * 100)} % (actuel)
+                    </option>
+                  )}
+              </Select>
               {!isNew && (
                 <Select
                   label="Statut"
@@ -378,7 +402,7 @@ export function DevisDetailClient({
                 <p className="mt-3 text-sm font-medium text-amber-800">
                   {reliquatLabel || "Reliquat"} : {formatFcfaLabel(rel)} · Total
                   avec nouvelles fonctionnalités :{" "}
-                  {formatFcfaLabel(totalHT + rel)}
+                  {formatFcfaLabel(totalGeneral)}
                 </p>
               )}
             </div>
@@ -414,12 +438,20 @@ export function DevisDetailClient({
                 ))}
               </div>
               <div className="mt-4 space-y-1 text-right text-sm">
-                <p className="font-semibold">
-                  Total HT : {formatFcfaLabel(totalHT)}
+                <p>
+                  {tauxTVA > 0 ? "HT" : "Total"} : {formatFcfaLabel(totalHT)}
                 </p>
+                {tauxTVA > 0 && (
+                  <>
+                    <p>TVA : {formatFcfaLabel(tva)}</p>
+                    <p className="font-semibold">
+                      TTC : {formatFcfaLabel(totalTTC)}
+                    </p>
+                  </>
+                )}
                 {rel > 0 && (
                   <p className="font-semibold text-amber-800">
-                    Total général : {formatFcfaLabel(totalHT + rel)}
+                    Total général : {formatFcfaLabel(totalGeneral)}
                   </p>
                 )}
               </div>
@@ -449,6 +481,7 @@ export function DevisDetailClient({
           lignes={lignes}
           reliquat={rel}
           reliquatLabel={reliquatLabel}
+          tauxTVA={tauxTVA}
           entreprise={devis.entreprise}
         />
       )}

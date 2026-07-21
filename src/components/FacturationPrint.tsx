@@ -7,7 +7,6 @@ import {
   MEGA_ROW_BORDER,
   type LigneDoc,
 } from "@/lib/facturation";
-import { MegaLogo } from "@/components/MegaLogo";
 import type { CSSProperties } from "react";
 
 type Entreprise = {
@@ -17,6 +16,27 @@ type Entreprise = {
   email?: string;
   telephone?: string;
 } | null;
+
+function DocLogo({ width = 88 }: { width?: number }) {
+  /** Logo horizontal redressé à la verticale (90° horloge). */
+  const height = Math.round((width * 393) / 88);
+  return (
+    <div className="relative shrink-0" style={{ width, height }}>
+      <img
+        src="/mega-logo.png"
+        alt="MEGA"
+        width={height}
+        height={width}
+        className="absolute left-1/2 top-1/2 origin-center object-contain"
+        style={{
+          width: height,
+          height: width,
+          transform: "translate(-50%, -50%) rotate(90deg)",
+        }}
+      />
+    </div>
+  );
+}
 
 const cellBorder = `1px solid ${MEGA_ROW_BORDER}`;
 const cellBorderWhite = "1px solid rgba(255,255,255,0.45)";
@@ -143,6 +163,7 @@ export function DevisPrintView({
   lignes,
   reliquat,
   reliquatLabel,
+  tauxTVA = 0,
   entreprise,
 }: {
   numero: string;
@@ -152,6 +173,7 @@ export function DevisPrintView({
   lignes: LigneDoc[];
   reliquat?: number;
   reliquatLabel?: string;
+  tauxTVA?: number;
   entreprise: Entreprise;
 }) {
   const email =
@@ -162,13 +184,15 @@ export function DevisPrintView({
   const hasReliquat = rel > 0;
   const labelReliquat = (reliquatLabel ?? "Reliquat").trim() || "Reliquat";
   const totalHT = lignes.reduce((s, l) => s + l.prix, 0);
-  const totalGeneral = totalHT + rel;
+  const tva = Math.round(totalHT * tauxTVA);
+  const totalTTC = totalHT + tva;
+  const totalGeneral = totalTTC + rel;
   const sectionTotal = hasReliquat ? 3 : 2;
 
   return (
     <div className="facture-doc mx-auto max-w-[800px] bg-white p-8 text-black print:p-0">
       <div className="mb-8 flex gap-6">
-        <MegaLogo width={260} priority />
+        <DocLogo width={72} />
         <div className="text-sm leading-relaxed">
           <p>
             <strong>Établi par :</strong> MEGA
@@ -253,7 +277,7 @@ export function DevisPrintView({
               colSpan={2}
               style={{ ...styleHeader, border: cellBorderWhite }}
             >
-              Total HT
+              {tauxTVA > 0 ? "Sous - Total HT" : "Total HT"}
             </td>
             <td
               className="px-3 py-2 text-right font-semibold"
@@ -262,6 +286,40 @@ export function DevisPrintView({
               {formatFcfa(totalHT)}
             </td>
           </tr>
+          {tauxTVA > 0 && (
+            <>
+              <tr>
+                <td
+                  className="px-3 py-2"
+                  colSpan={2}
+                  style={{ ...styleWhite, border: cellBorder }}
+                >
+                  TVA {Math.round(tauxTVA * 100)}%
+                </td>
+                <td
+                  className="px-3 py-2 text-right"
+                  style={{ ...styleWhite, border: cellBorder }}
+                >
+                  {formatFcfa(tva)}
+                </td>
+              </tr>
+              <tr>
+                <td
+                  className="px-3 py-2 font-semibold"
+                  colSpan={2}
+                  style={{ ...styleHeader, border: cellBorderWhite }}
+                >
+                  Sous - Total TTC
+                </td>
+                <td
+                  className="px-3 py-2 text-right font-semibold"
+                  style={{ ...styleHeader, border: cellBorderWhite }}
+                >
+                  {formatFcfa(totalTTC)}
+                </td>
+              </tr>
+            </>
+          )}
         </tbody>
       </table>
 
@@ -351,7 +409,7 @@ export function DevisPrintView({
                   className="px-3 py-2 text-right"
                   style={{ ...styleHeader, border: cellBorderWhite }}
                 >
-                  {formatFcfa(totalHT)}
+                  {formatFcfa(totalTTC)}
                 </td>
               </tr>
               <tr>
@@ -418,7 +476,7 @@ export function FacturePrintView({
   return (
     <div className="facture-doc mx-auto max-w-[800px] bg-white p-8 text-black print:p-0">
       <div className="mb-8 flex gap-6">
-        <MegaLogo width={260} priority />
+        <DocLogo width={72} />
         <div className="text-sm leading-relaxed">
           <p>
             <strong>Établi par :</strong> MEGA

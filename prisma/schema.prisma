@@ -150,6 +150,8 @@ model Devis {
   facture       Facture?
   reliquat      Int          @default(0)
   reliquatLabel String       @default("Reliquat")
+  /** 0 = sans TVA ; ex. 0.18 = TVA 18 % */
+  tauxTVA       Float        @default(0)
   notes         String?
   createdAt     DateTime     @default(now())
   updatedAt     DateTime     @updatedAt

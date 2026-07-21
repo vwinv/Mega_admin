@@ -250,6 +250,7 @@ export async function getDevisComplet(id: string) {
     notes: d.notes,
     reliquat: d.reliquat,
     reliquatLabel: d.reliquatLabel,
+    tauxTVA: d.tauxTVA,
     client: d.client,
     factureId: d.facture?.id ?? null,
     lignes: d.lignes.map((l) => ({
@@ -327,6 +328,7 @@ export async function saveDevis(
     notes?: string;
     reliquat?: number;
     reliquatLabel?: string;
+    tauxTVA?: number;
     lignes: LigneDoc[];
   }
 ): Promise<{ ok: true; id: string } | { ok: false; error: string }> {
@@ -341,6 +343,7 @@ export async function saveDevis(
 
   const reliquat = Math.max(0, Math.round(input.reliquat ?? 0) || 0);
   const reliquatLabel = input.reliquatLabel?.trim() || "Reliquat";
+  const tauxTVA = Math.max(0, Number(input.tauxTVA ?? 0) || 0);
 
   const lignesData = input.lignes.map((l, i) => ({
     ordre: i,
@@ -363,6 +366,7 @@ export async function saveDevis(
         notes: input.notes?.trim() || null,
         reliquat,
         reliquatLabel,
+        tauxTVA,
         lignes: { create: lignesData },
       },
     });
@@ -389,6 +393,7 @@ export async function saveDevis(
       notes: input.notes?.trim() || null,
       reliquat,
       reliquatLabel,
+      tauxTVA,
       lignes: { create: lignesData },
     },
   });
@@ -526,8 +531,6 @@ export async function convertirDevisEnFacture(
   const numeroErr = await ensureNumeroFactureUnique(prisma, numero);
   if (numeroErr) return { ok: false, error: numeroErr };
 
-  const params = await prisma.parametre.findFirst();
-
   const facture = await prisma.facture.create({
     data: {
       numero,
@@ -538,7 +541,7 @@ export async function convertirDevisEnFacture(
       statut: "ENVOYE",
       reliquat: devis.reliquat,
       reliquatLabel: devis.reliquatLabel || "Reliquat",
-      tauxTVA: params?.tauxTVA ?? 0.18,
+      tauxTVA: devis.tauxTVA,
       statutApprobation: "EN_ATTENTE_CEO",
       demandePar: guard.nom,
       demandeAt: new Date(),
