@@ -5,23 +5,22 @@ import { Button } from "@/components/ui";
 import { formatFcfa, formatFcfaLabel } from "@/lib/format";
 import { MEGA_BRAND, STATUT_FACTURE_LABELS } from "@/lib/facturation";
 
-function DocLogo({ width = 72 }: { width?: number }) {
-  const height = Math.round((width * 393) / 88);
+function DocLogo({ height = 120 }: { height?: number }) {
+  const width = Math.round((height * 88) / 393);
   return (
-    <div className="relative shrink-0" style={{ width, height }}>
-      <img
-        src="/mega-logo.png"
-        alt="MEGA"
-        width={height}
-        height={width}
-        className="absolute left-1/2 top-1/2 origin-center object-contain"
-        style={{
-          width: height,
-          height: width,
-          transform: "translate(-50%, -50%) rotate(90deg)",
-        }}
-      />
-    </div>
+    <img
+      src="/mega-logo-vertical.png"
+      alt="MEGA"
+      width={width}
+      height={height}
+      className="block h-auto shrink-0 object-contain object-left"
+      style={{
+        height,
+        width,
+        aspectRatio: "88 / 393",
+        mixBlendMode: "screen",
+      }}
+    />
   );
 }
 
@@ -78,9 +77,9 @@ export function RecuPaiementClient({ recu }: { recu: RecuData }) {
       </div>
 
       <div className="facture-doc mx-auto max-w-[720px] bg-white p-8 text-black print:p-0">
-        <div className="mb-8 flex gap-6">
-          <DocLogo width={72} />
-          <div className="text-sm leading-relaxed">
+        <div className="mb-8">
+          <DocLogo height={130} />
+          <div className="mt-4 text-sm leading-relaxed">
             <p>
               <strong>Établi par :</strong> MEGA
             </p>

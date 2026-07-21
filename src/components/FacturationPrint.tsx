@@ -17,23 +17,68 @@ type Entreprise = {
   telephone?: string;
 } | null;
 
-function DocLogo({ width = 88 }: { width?: number }) {
-  /** Logo horizontal redressé à la verticale (90° horloge). */
-  const height = Math.round((width * 393) / 88);
+function DocLogo({ height = 120 }: { height?: number }) {
+  /** Logo MEGA déjà vertical (88×393) — pas de rotation CSS. */
+  const width = Math.round((height * 88) / 393);
   return (
-    <div className="relative shrink-0" style={{ width, height }}>
-      <img
-        src="/mega-logo.png"
-        alt="MEGA"
-        width={height}
-        height={width}
-        className="absolute left-1/2 top-1/2 origin-center object-contain"
-        style={{
-          width: height,
-          height: width,
-          transform: "translate(-50%, -50%) rotate(90deg)",
-        }}
-      />
+    <img
+      src="/mega-logo-vertical.png"
+      alt="MEGA"
+      width={width}
+      height={height}
+      className="block h-auto shrink-0 object-contain object-left"
+      style={{
+        height,
+        width,
+        aspectRatio: "88 / 393",
+        // Fond noir du PNG → transparent sur fond blanc
+        mixBlendMode: "screen",
+      }}
+    />
+  );
+}
+
+function DocHeader({
+  kind,
+  numero,
+  titre,
+  date,
+  clientNom,
+  email,
+  tel,
+}: {
+  kind: "DEVIS" | "FACTURE";
+  numero: string;
+  titre?: string | null;
+  date: string;
+  clientNom: string;
+  email: string;
+  tel: string;
+}) {
+  const dateLabel = new Date(date).toLocaleDateString("fr-FR");
+  return (
+    <div className="mb-8 text-[#111]">
+      <DocLogo height={130} />
+
+      <div className="mt-4 text-sm leading-relaxed">
+        <p>Établi par : MEGA</p>
+        <p>Courriel : {email}</p>
+        <p>Téléphone : {tel}</p>
+      </div>
+
+      <div className="mt-8 text-center">
+        <h1 className="text-base font-normal">
+          <span className="font-bold">
+            {kind} N°{numero}
+          </span>
+          {titre ? ` — ${titre}` : ""}
+        </h1>
+        <p className="mt-1 text-sm">Date : {dateLabel}</p>
+      </div>
+
+      <p className="mt-6 text-sm">
+        <strong>Client :</strong> {clientNom}
+      </p>
     </div>
   );
 }
@@ -191,30 +236,15 @@ export function DevisPrintView({
 
   return (
     <div className="facture-doc mx-auto max-w-[800px] bg-white p-8 text-black print:p-0">
-      <div className="mb-8 flex gap-6">
-        <DocLogo width={72} />
-        <div className="text-sm leading-relaxed">
-          <p>
-            <strong>Établi par :</strong> MEGA
-          </p>
-          <p>
-            <strong>Courriel :</strong> {email}
-          </p>
-          <p>
-            <strong>Téléphone :</strong> {tel}
-          </p>
-        </div>
-      </div>
-
-      <h1 className="mb-2 text-lg font-bold">
-        DEVIS N°{numero} – {titre}
-      </h1>
-      <p className="mb-1 text-sm">
-        <strong>Date :</strong> {new Date(date).toLocaleDateString("fr-FR")}
-      </p>
-      <p className="mb-6 text-sm">
-        <strong>Client :</strong> {clientNom}
-      </p>
+      <DocHeader
+        kind="DEVIS"
+        numero={numero}
+        titre={titre}
+        date={date}
+        clientNom={clientNom}
+        email={email}
+        tel={tel}
+      />
 
       <h2 className="mb-3 text-base font-bold">1 - Nouvelles fonctionnalités</h2>
 
@@ -475,31 +505,15 @@ export function FacturePrintView({
 
   return (
     <div className="facture-doc mx-auto max-w-[800px] bg-white p-8 text-black print:p-0">
-      <div className="mb-8 flex gap-6">
-        <DocLogo width={72} />
-        <div className="text-sm leading-relaxed">
-          <p>
-            <strong>Établi par :</strong> MEGA
-          </p>
-          <p>
-            <strong>Courriel :</strong> {email}
-          </p>
-          <p>
-            <strong>Téléphone :</strong> {tel}
-          </p>
-        </div>
-      </div>
-
-      <h1 className="mb-2 text-lg font-bold">
-        FACTURE N°{numero}
-        {titre ? ` – ${titre}` : ""}
-      </h1>
-      <p className="mb-1 text-sm">
-        <strong>Date :</strong> {new Date(date).toLocaleDateString("fr-FR")}
-      </p>
-      <p className="mb-6 text-sm">
-        <strong>Client :</strong> {clientNom}
-      </p>
+      <DocHeader
+        kind="FACTURE"
+        numero={numero}
+        titre={titre}
+        date={date}
+        clientNom={clientNom}
+        email={email}
+        tel={tel}
+      />
 
       <h2 className="mb-3 text-base font-bold">1 - Nouvelles fonctionnalités</h2>
 
