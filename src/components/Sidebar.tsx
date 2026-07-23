@@ -11,12 +11,14 @@ import {
   CheckCircle,
   FileSpreadsheet,
   FileText,
+  Grid2x2,
   History,
   Landmark,
   LayoutDashboard,
   LogOut,
   Menu,
   BookOpen,
+  PenLine,
   Receipt,
   Settings,
   ShieldCheck,
@@ -30,6 +32,7 @@ import {
 import type { LucideIcon } from "lucide-react";
 import { logout } from "@/app/actions/auth";
 import { MegaLogo } from "@/components/MegaLogo";
+import { getProductById, type ProductId } from "@/lib/products";
 import type { SessionUser } from "@/lib/session";
 import {
   ROLE_LABELS,
@@ -46,11 +49,11 @@ type NavItem = {
   roles?: Role[];
 };
 
-const navGroups: { title: string; items: NavItem[] }[] = [
+const financeNavGroups: { title: string; items: NavItem[] }[] = [
   {
     title: "Vue d'ensemble",
     items: [
-      { href: "/", label: "Tableau de bord", icon: LayoutDashboard },
+      { href: "/finance", label: "Tableau de bord", icon: LayoutDashboard },
       { href: "/tresorerie", label: "Trésorerie", icon: Landmark },
     ],
   },
@@ -111,6 +114,24 @@ const navGroups: { title: string; items: NavItem[] }[] = [
   },
 ];
 
+const signatureNavGroups: { title: string; items: NavItem[] }[] = [
+  {
+    title: "Signature",
+    items: [
+      { href: "/signatures", label: "Accueil", icon: PenLine },
+      { href: "/signatures/editer", label: "Éditer & signer", icon: PenLine },
+      { href: "/signatures/nouveau", label: "Partager un document", icon: FileText },
+    ],
+  },
+];
+
+const profilNavGroups: { title: string; items: NavItem[] }[] = [
+  {
+    title: "Compte",
+    items: [{ href: "/profil", label: "Mon profil", icon: User }],
+  },
+];
+
 function canSeeItem(item: NavItem, role: Role | null): boolean {
   if (!item.roles) return true;
   if (!role) return false;
@@ -127,9 +148,11 @@ function userInitials(nom: string): string {
 function NavContent({
   onNavigate,
   role,
+  groups,
 }: {
   onNavigate?: () => void;
   role: Role | null;
+  groups: { title: string; items: NavItem[] }[];
 }) {
   const pathname = usePathname();
   const [pendingHref, setPendingHref] = useState<string | null>(null);
@@ -140,7 +163,7 @@ function NavContent({
 
   return (
     <>
-      {navGroups.map((group) => {
+      {groups.map((group) => {
         const items = group.items.filter((item) => canSeeItem(item, role));
         if (items.length === 0) return null;
 
@@ -152,9 +175,10 @@ function NavContent({
             <ul className="space-y-0.5">
               {items.map((item) => {
                 const active =
-                  item.href === "/"
-                    ? pathname === "/"
-                    : pathname.startsWith(item.href);
+                  item.href === "/finance" || item.href === "/signatures"
+                    ? pathname === item.href
+                    : pathname === item.href ||
+                      pathname.startsWith(`${item.href}/`);
                 const pending = pendingHref === item.href;
                 const Icon = item.icon;
 
@@ -200,9 +224,25 @@ function NavContent({
   );
 }
 
-export function Sidebar({ user }: { user: SessionUser | null }) {
+export function Sidebar({
+  user,
+  productId = "finance",
+  mode,
+}: {
+  user: SessionUser | null;
+  productId?: ProductId;
+  mode?: "profil";
+}) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const role = user?.role ?? null;
+  const product = mode === "profil" ? null : getProductById(productId);
+
+  const groups =
+    mode === "profil"
+      ? profilNavGroups
+      : productId === "signature"
+        ? signatureNavGroups
+        : financeNavGroups;
 
   return (
     <>
@@ -211,6 +251,14 @@ export function Sidebar({ user }: { user: SessionUser | null }) {
           <MegaLogo width={120} priority />
         </div>
         <div className="flex items-center gap-1">
+          <Link
+            href="/"
+            className="rounded-md p-2 text-[var(--c-stone-600)] hover:bg-[var(--c-stone-100)]"
+            aria-label="Applications"
+            title="Applications"
+          >
+            <Grid2x2 className="h-5 w-5" />
+          </Link>
           {user && (
             <form action={logout}>
               <button
@@ -265,10 +313,30 @@ export function Sidebar({ user }: { user: SessionUser | null }) {
               <X className="h-5 w-5" />
             </button>
           </div>
+          {product && (
+            <p className="mt-3 px-0.5 text-[11px] font-medium uppercase tracking-[0.18em] text-[var(--c-gold-300)]">
+              {product.name}
+            </p>
+          )}
         </div>
 
-        <nav className="flex-1 overflow-y-auto px-3.5 py-5">
-          <NavContent onNavigate={() => setMobileOpen(false)} role={role} />
+        <div className="px-3.5 pb-2">
+          <Link
+            href="/"
+            onClick={() => setMobileOpen(false)}
+            className="flex items-center gap-2.5 rounded-sm px-2.5 py-2.5 text-[13.5px] text-[var(--c-blue-100)] transition-all hover:bg-white/5 hover:text-white"
+          >
+            <Grid2x2 className="h-4 w-4 text-[var(--c-gold-400)]" strokeWidth={2} />
+            Applications
+          </Link>
+        </div>
+
+        <nav className="flex-1 overflow-y-auto px-3.5 py-3">
+          <NavContent
+            onNavigate={() => setMobileOpen(false)}
+            role={role}
+            groups={groups}
+          />
         </nav>
 
         <div className="border-t border-[var(--sidebar-border)] px-5 py-4">
@@ -316,7 +384,7 @@ export function Sidebar({ user }: { user: SessionUser | null }) {
             <p className="text-xs text-[var(--c-blue-300)]">Non connecté</p>
           )}
           <p className="mt-3 text-[11px] tracking-wide text-[var(--c-blue-300)]">
-            Devise · FCFA
+            {productId === "signature" ? "Signature électronique" : "Devise · FCFA"}
           </p>
         </div>
       </aside>

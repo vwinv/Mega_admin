@@ -43,6 +43,7 @@ export const ROLE_PERMISSIONS: Record<Role, string[]> = {
   ],
   CEO: [
     "Approbation factures & opérations",
+    "Signatures électroniques",
     "Consultation complète",
     "Trésorerie & pilotage",
   ],

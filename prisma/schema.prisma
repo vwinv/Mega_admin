@@ -26,6 +26,112 @@ model User {
   actif        Boolean  @default(true)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+  signature    UserSignature?
+}
+
+model UserSignature {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  imageData String
+  type      String   @default("DRAWN")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model SignatureDemande {
+  id             String    @id @default(cuid())
+  titre          String
+  statut         String    @default("EN_ATTENTE")
+  sourceType     String
+  sourceId       String
+  montant        Int       @default(0)
+  demandeParId   String?
+  demandeParNom  String?
+  signataireId   String?
+  signataireNom  String?
+  signeAt        DateTime?
+  signatureImage String?
+  motifRefus     String?
+  hashContenu    String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@unique([sourceType, sourceId])
+  @@index([statut])
+  @@index([signataireId])
+}
+
+/** Demande de signature sur un document interne (PDF, Word, etc.) */
+model SignatureEnvelope {
+  id               String                @id @default(cuid())
+  titre            String
+  objet            String?
+  message          String?
+  statut           String                @default("BROUILLON")
+  ordreObligatoire Boolean               @default(true)
+  rappelFrequence  String                @default("HEBDO")
+  createurId       String?
+  createurNom      String
+  fichierNom       String
+  fichierMime      String?
+  fichierChemin    String
+  fichierContenu   Bytes?
+  fichierTaille    Int?
+  envoyeAt         DateTime?
+  completeAt       DateTime?
+  createdAt        DateTime              @default(now())
+  updatedAt        DateTime              @updatedAt
+  destinataires    SignatureDestinataire[]
+  champs           SignatureChamp[]
+
+  @@index([statut])
+  @@index([createurId])
+  @@index([createdAt])
+}
+
+model SignatureDestinataire {
+  id             String             @id @default(cuid())
+  envelopeId     String
+  envelope       SignatureEnvelope  @relation(fields: [envelopeId], references: [id], onDelete: Cascade)
+  ordre          Int
+  email          String
+  nom            String
+  role           String             @default("SIGNATAIRE")
+  statut         String             @default("EN_ATTENTE")
+  /** Jeton unique pour lien public Review and sign */
+  accessToken    String?            @unique
+  userId         String?
+  signatureImage String?
+  signeAt        DateTime?
+  motifRefus     String?
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+  champs         SignatureChamp[]
+
+  @@index([envelopeId])
+  @@index([email])
+  @@index([userId])
+  @@index([statut])
+}
+
+model SignatureChamp {
+  id             String                @id @default(cuid())
+  envelopeId     String
+  envelope       SignatureEnvelope     @relation(fields: [envelopeId], references: [id], onDelete: Cascade)
+  destinataireId String?
+  destinataire   SignatureDestinataire? @relation(fields: [destinataireId], references: [id], onDelete: SetNull)
+  type           String                @default("SIGNATURE")
+  page           Int                   @default(1)
+  posX           Float                 @default(0.1)
+  posY           Float                 @default(0.8)
+  largeur        Float                 @default(0.25)
+  hauteur        Float                 @default(0.08)
+  valeur         String?
+  createdAt      DateTime              @default(now())
+
+  @@index([envelopeId])
+  @@index([destinataireId])
 }
 
 model Categorie {

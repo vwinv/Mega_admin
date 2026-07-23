@@ -2,7 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { jwtVerify } from "jose";
 
 const SESSION_COOKIE = "mega_session";
-const PUBLIC_PATHS = ["/login", "/api/auth/google", "/api/auth/google/callback"];
+const PUBLIC_PATHS = [
+  "/login",
+  "/sign",
+  "/api/signatures/public",
+  "/api/auth/google",
+  "/api/auth/google/callback",
+];
 
 function getSecret() {
   const secret = process.env.AUTH_SECRET;
@@ -30,7 +36,8 @@ export async function proxy(request: NextRequest) {
     pathname.startsWith("/_next") ||
     pathname.startsWith("/favicon") ||
     pathname.endsWith(".ico") ||
-    /\.(png|jpe?g|gif|webp|svg)$/i.test(pathname)
+    pathname === "/pdf.worker.min.mjs" ||
+    /\.(png|jpe?g|gif|webp|svg|mjs|js|css|woff2?|ttf|map)$/i.test(pathname)
   ) {
     return NextResponse.next();
   }

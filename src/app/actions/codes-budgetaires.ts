@@ -35,6 +35,7 @@ export async function createCodeBudgetaire(
   revalidatePath("/journal");
   revalidatePath("/caisse");
   revalidatePath("/");
+  revalidatePath("/finance");
   return { ok: true };
 }
 
@@ -57,6 +58,7 @@ export async function updateCodeBudgetaire(
 
   revalidatePath("/codes-budgetaires");
   revalidatePath("/");
+  revalidatePath("/finance");
   return { ok: true };
 }
 

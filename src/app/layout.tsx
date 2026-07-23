@@ -19,9 +19,9 @@ const fontMono = IBM_Plex_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "MEGA SN SARL · Gestion financière",
+  title: "MEGA SN SARL · Applications",
   description:
-    "Application de gestion financière pour MEGA SN SARL (FCFA, SYSCOHADA)",
+    "Plateforme MEGA SN — Finance, Signature et modules métiers (FCFA, SYSCOHADA)",
   applicationName: "MEGA SN",
   icons: {
     icon: [
@@ -55,8 +55,12 @@ export default async function RootLayout({
       lang="fr"
       className={`${fontSans.variable} ${fontMono.variable} h-full antialiased`}
       style={fontAliases}
+      suppressHydrationWarning
     >
-      <body className="flex min-h-full text-[var(--foreground)]">
+      <body
+        className="flex min-h-full text-[var(--foreground)]"
+        suppressHydrationWarning
+      >
         <AppShell user={user}>{children}</AppShell>
       </body>
     </html>

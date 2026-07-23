@@ -12,6 +12,7 @@ import { logAudit } from "@/lib/audit";
 import { nextNumeroPieceCaisse } from "@/lib/numero-piece";
 import { prisma } from "@/lib/prisma";
 import { computeSoldeCaisseApres } from "@/lib/tresorerie";
+import { syncSignatureForCaisseOperation } from "@/lib/signatures";
 import { OperationInput, montantOperationInchange, validateOperation } from "@/lib/validation";
 
 function parseDate(value: string): Date | null {
@@ -94,12 +95,21 @@ export async function createOperationCaisse(
       : `${enriched.libelle} · ${enriched.montant.toLocaleString("fr-FR")} FCFA`,
   });
 
+  if (ceoPending) {
+    await syncSignatureForCaisseOperation(created.id, {
+      id: guard.id,
+      nom: guard.nom,
+    });
+  }
+
   revalidatePath("/caisse");
   revalidatePath("/");
+  revalidatePath("/finance");
   revalidatePath("/tresorerie");
   revalidatePath("/budget");
   revalidatePath("/codes-budgetaires");
   revalidatePath("/approbations");
+  revalidatePath("/signatures");
 
   return ceoPending
     ? {
@@ -169,6 +179,11 @@ export async function updateOperationCaisse(
     },
   });
 
+  await syncSignatureForCaisseOperation(id, {
+    id: guard.id,
+    nom: guard.nom,
+  });
+
   await logAudit({
     userId: guard.id,
     userNom: guard.nom,
@@ -180,10 +195,12 @@ export async function updateOperationCaisse(
 
   revalidatePath("/caisse");
   revalidatePath("/");
+  revalidatePath("/finance");
   revalidatePath("/tresorerie");
   revalidatePath("/budget");
   revalidatePath("/codes-budgetaires");
   revalidatePath("/approbations");
+  revalidatePath("/signatures");
 
   return ceoPending
     ? { ok: true, message: "Modification enregistrée. Approbation CEO requise." }
@@ -212,9 +229,11 @@ export async function deleteOperationCaisse(
 
   revalidatePath("/caisse");
   revalidatePath("/");
+  revalidatePath("/finance");
   revalidatePath("/tresorerie");
   revalidatePath("/budget");
   revalidatePath("/codes-budgetaires");
   revalidatePath("/approbations");
+  revalidatePath("/signatures");
   return { ok: true };
 }

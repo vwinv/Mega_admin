@@ -24,5 +24,6 @@ export async function saveBudgetLigne(
 
   revalidatePath("/budget");
   revalidatePath("/");
+  revalidatePath("/finance");
   return { ok: true };
 }

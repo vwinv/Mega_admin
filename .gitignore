@@ -73,3 +73,7 @@ dumps/
 prisma/*.db
 prisma/*.db-journal
 .env*
+!.env.example
+
+# Outbox e-mails locaux (Signature)
+.data/

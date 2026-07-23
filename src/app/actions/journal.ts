@@ -14,6 +14,7 @@ import { logAudit } from "@/lib/audit";
 import { nextNumeroPieceBanque } from "@/lib/numero-piece";
 import { syncTvaDeclarationMois } from "@/lib/impots";
 import { prisma } from "@/lib/prisma";
+import { syncSignatureForJournalOperation } from "@/lib/signatures";
 import { ensureApprovisionnementCaisse } from "@/lib/transfert-caisse";
 import { OperationInput, montantOperationInchange, validateOperation } from "@/lib/validation";
 
@@ -106,14 +107,23 @@ export async function createOperation(input: OperationInput): Promise<OpResult> 
     await syncTvaForDate(opDate);
   }
 
+  if (ceoPending) {
+    await syncSignatureForJournalOperation(created.id, {
+      id: guard.id,
+      nom: guard.nom,
+    });
+  }
+
   revalidatePath("/journal");
   revalidatePath("/caisse");
   revalidatePath("/impots");
   revalidatePath("/");
+  revalidatePath("/finance");
   revalidatePath("/tresorerie");
   revalidatePath("/budget");
   revalidatePath("/codes-budgetaires");
   revalidatePath("/approbations");
+  revalidatePath("/signatures");
 
   return ceoPending
     ? {
@@ -172,6 +182,11 @@ export async function updateOperation(
     },
   });
 
+  await syncSignatureForJournalOperation(id, {
+    id: guard.id,
+    nom: guard.nom,
+  });
+
   await logAudit({
     userId: guard.id,
     userNom: guard.nom,
@@ -191,10 +206,12 @@ export async function updateOperation(
   revalidatePath("/journal");
   revalidatePath("/impots");
   revalidatePath("/");
+  revalidatePath("/finance");
   revalidatePath("/tresorerie");
   revalidatePath("/budget");
   revalidatePath("/codes-budgetaires");
   revalidatePath("/approbations");
+  revalidatePath("/signatures");
 
   return ceoPending
     ? {
@@ -231,9 +248,11 @@ export async function deleteOperation(
   revalidatePath("/journal");
   revalidatePath("/impots");
   revalidatePath("/");
+  revalidatePath("/finance");
   revalidatePath("/tresorerie");
   revalidatePath("/budget");
   revalidatePath("/codes-budgetaires");
   revalidatePath("/approbations");
+  revalidatePath("/signatures");
   return { ok: true };
 }

@@ -8,6 +8,11 @@ import { prisma } from "@/lib/prisma";
 import { canApproveCeo } from "@/lib/roles";
 import type { SessionUser } from "@/lib/session";
 import {
+  markSignatureRefused,
+  markSignatureSigned,
+  validateSignatureImage,
+} from "@/lib/signatures";
+import {
   ensureApprovisionnementCaisse,
   isTransfertVersCaisse,
 } from "@/lib/transfert-caisse";
@@ -20,6 +25,8 @@ const PATHS = [
   "/budget",
   "/codes-budgetaires",
   "/approbations",
+  "/signatures",
+  "/finance",
   "/facturation",
 ];
 
@@ -136,11 +143,15 @@ async function requireCeoApprover(): Promise<
 
 export async function approveOperation(
   id: string,
-  source: "journal" | "caisse" | "facture"
+  source: "journal" | "caisse" | "facture",
+  signatureImage: string
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   const guard = await requireCeoApprover();
   if ("ok" in guard && guard.ok === false) return guard;
   const approver = guard as SessionUser;
+
+  const sigErr = validateSignatureImage(signatureImage);
+  if (sigErr) return { ok: false, error: sigErr };
 
   const now = new Date();
   const data = {
@@ -205,7 +216,12 @@ export async function approveOperation(
     action: "UPDATE",
     entity: entityLabel,
     entityId: id,
-    details: "Approbation CEO",
+    details: "Approbation CEO avec signature électronique",
+  });
+
+  await markSignatureSigned(source, id, signatureImage.trim(), {
+    id: approver.id,
+    nom: approver.nom,
   });
 
   revalidateAll();
@@ -273,6 +289,11 @@ export async function rejectOperation(
     entity: entityLabel,
     entityId: id,
     details: `Refus CEO : ${motifTrim}`,
+  });
+
+  await markSignatureRefused(source, id, motifTrim, {
+    id: approver.id,
+    nom: approver.nom,
   });
 
   revalidateAll();

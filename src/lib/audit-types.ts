@@ -26,6 +26,9 @@ export const AUDIT_ENTITIES = [
   "Client",
   "Devis",
   "Facture",
+  "UserSignature",
+  "SignatureDemande",
+  "SignatureEnvelope",
 ] as const;
 
 export type AuditEntity = (typeof AUDIT_ENTITIES)[number];
@@ -67,4 +70,7 @@ export const AUDIT_ENTITY_LABELS: Record<string, string> = {
   Client: "Client",
   Devis: "Devis",
   Facture: "Facture",
+  UserSignature: "Signature utilisateur",
+  SignatureDemande: "Demande de signature",
+  SignatureEnvelope: "Parcours document",
 };

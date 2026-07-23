@@ -14,8 +14,19 @@ import {
 } from "@/lib/facturation";
 import { ensureNumeroFactureUnique, nextNumeroPieceBanque } from "@/lib/numero-piece";
 import { prisma } from "@/lib/prisma";
+import { syncSignatureForFacture } from "@/lib/signatures";
 
-const PATHS = ["/facturation", "/clients", "/journal", "/tresorerie", "/impots", "/"];
+const PATHS = [
+  "/facturation",
+  "/clients",
+  "/journal",
+  "/tresorerie",
+  "/impots",
+  "/approbations",
+  "/signatures",
+  "/finance",
+  "/",
+];
 
 function revalidate() {
   for (const p of PATHS) revalidatePath(p);
@@ -476,6 +487,10 @@ export async function saveFacture(
         lignes: { create: lignesData },
       },
     });
+    await syncSignatureForFacture(input.id, {
+      id: guard.id,
+      nom: guard.nom,
+    });
     revalidate();
     return { ok: true, id: input.id };
   }
@@ -508,6 +523,11 @@ export async function saveFacture(
     entity: "Facture",
     entityId: created.id,
     details: `${numero}`,
+  });
+
+  await syncSignatureForFacture(created.id, {
+    id: guard.id,
+    nom: guard.nom,
   });
 
   revalidate();
@@ -569,6 +589,11 @@ export async function convertirDevisEnFacture(
     entity: "Facture",
     entityId: facture.id,
     details: `Depuis devis ${devis.numero}`,
+  });
+
+  await syncSignatureForFacture(facture.id, {
+    id: guard.id,
+    nom: guard.nom,
   });
 
   revalidate();

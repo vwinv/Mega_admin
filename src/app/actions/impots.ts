@@ -39,6 +39,7 @@ export async function createEcheance(
   revalidatePath("/impots");
   revalidatePath("/controle");
   revalidatePath("/");
+  revalidatePath("/finance");
   return { ok: true };
 }
 
@@ -66,6 +67,7 @@ export async function updateEcheanceStatut(
   revalidatePath("/impots");
   revalidatePath("/controle");
   revalidatePath("/");
+  revalidatePath("/finance");
   return { ok: true };
 }
 
