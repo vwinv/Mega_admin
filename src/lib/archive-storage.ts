@@ -1,4 +1,4 @@
-import { del, get } from "@vercel/blob";
+import { del, get, put } from "@vercel/blob";
 import { mkdir, unlink, writeFile } from "fs/promises";
 import os from "os";
 import path from "path";
@@ -39,11 +39,11 @@ export function hasBlobStorage(): boolean {
 }
 
 /**
- * Sur Vercel sans Blob : BYTEA (lourd, limite body ~4,5 Mo).
+ * Sur Vercel sans Blob : BYTEA en base.
  * En local : disque data/archives.
+ * (Blob est géré à part dans saveArchiveFile.)
  */
 export function usesDatabaseArchiveStorage(): boolean {
-  if (hasBlobStorage()) return false;
   const forced = process.env.ARCHIVES_STORAGE?.trim().toLowerCase();
   if (forced === "db") return true;
   if (forced === "fs") return false;
@@ -147,16 +147,34 @@ export async function saveArchiveFile(
   const safeName = `${randomUUID()}${ext}`;
   const relativeDir = subdir.replace(/\\/g, "/").replace(/^\/+/, "");
   const buffer = new Uint8Array(await file.arrayBuffer());
+  const contentType = file.type || mimeType;
 
+  // 1) Vercel Blob (persistant en prod)
+  if (hasBlobStorage()) {
+    const pathname = buildBlobPathname(subdir, file.name);
+    const blob = await put(pathname, Buffer.from(buffer), {
+      access: "private",
+      contentType,
+      addRandomSuffix: false,
+    });
+    return {
+      cheminStockage: blob.url,
+      mimeType: contentType,
+      tailleOctets: file.size,
+    };
+  }
+
+  // 2) Serverless sans Blob → BYTEA
   if (usesDatabaseArchiveStorage()) {
     return {
       cheminStockage: `db/${relativeDir}/${safeName}`.replace(/\/+/g, "/"),
-      mimeType: file.type || mimeType,
+      mimeType: contentType,
       tailleOctets: file.size,
       contenu: buffer,
     };
   }
 
+  // 3) Disque local (dev)
   const dir = path.join(getArchivesRoot(), relativeDir);
   try {
     await mkdir(dir, { recursive: true });
@@ -179,7 +197,7 @@ export async function saveArchiveFile(
 
   return {
     cheminStockage: path.join(relativeDir, safeName).replace(/\\/g, "/"),
-    mimeType: file.type || mimeType,
+    mimeType: contentType,
     tailleOctets: file.size,
   };
 }
@@ -216,8 +234,15 @@ export async function readArchiveBytes(
   if (isDbArchivePath(cheminStockage)) {
     throw new Error("Fichier absent du stockage.");
   }
-  const { readFile } = await import("fs/promises");
-  return new Uint8Array(await readFile(resolveArchivePath(cheminStockage)));
+  // Ancien chemin disque (souvent perdu sur Vercel)
+  try {
+    const { readFile } = await import("fs/promises");
+    return new Uint8Array(await readFile(resolveArchivePath(cheminStockage)));
+  } catch {
+    throw new Error(
+      "Fichier introuvable (stockage temporaire expiré). Renvoyez le document pour signature."
+    );
+  }
 }
 
 export async function deleteArchiveFile(cheminStockage: string): Promise<void> {

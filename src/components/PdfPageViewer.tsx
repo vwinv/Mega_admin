@@ -38,6 +38,19 @@ export function PdfPageViewer({
         // Worker servi depuis /public (fiable avec Next/Webpack)
         pdfjs.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
 
+        // Détecte tôt les 404 JSON (fichier absent)
+        const probe = await fetch(url, { credentials: "include" });
+        if (!probe.ok) {
+          let detail = `HTTP ${probe.status}`;
+          try {
+            const j = (await probe.json()) as { error?: string };
+            if (j.error) detail = j.error;
+          } catch {
+            /* ignore */
+          }
+          throw new Error(detail);
+        }
+
         const loadingTask = pdfjs.getDocument({
           url,
           withCredentials: true,
@@ -119,7 +132,8 @@ export function PdfPageViewer({
       )}
       {error && (
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-slate-50 p-6 text-center text-sm text-slate-600">
-          <p>Aperçu PDF indisponible.</p>
+          <p className="font-medium text-slate-800">Document indisponible</p>
+          <p className="max-w-sm text-xs text-slate-500">{error}</p>
           <a
             href={url}
             target="_blank"
