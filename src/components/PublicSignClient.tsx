@@ -94,7 +94,13 @@ export function PublicSignClient({ session }: { session: PublicSignSession }) {
         w = h * ratio;
       }
       const finalW = Math.round(Math.min(w, 960));
-      setPageBox({ w: finalW, h: Math.round(finalW / ratio) });
+      const finalH = Math.round(finalW / ratio);
+      setPageBox((prev) => {
+        if (Math.abs(prev.w - finalW) < 3 && Math.abs(prev.h - finalH) < 3) {
+          return prev;
+        }
+        return { w: finalW, h: finalH };
+      });
     }
     measure();
     window.addEventListener("resize", measure);
