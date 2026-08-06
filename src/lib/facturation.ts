@@ -45,6 +45,11 @@ export type LigneDoc = {
 };
 
 export type TotauxFacture = {
+  /** Somme des lignes avant remise */
+  brutHT: number;
+  /** Remise appliquée (FCFA) */
+  remise: number;
+  /** HT après remise */
   totalHT: number;
   tva: number;
   totalTTC: number;
@@ -52,6 +57,30 @@ export type TotauxFacture = {
   totalGeneral: number;
   resteAPayer: number;
 };
+
+/** Normalise un % saisi (10 ou 0.1 → 0.1). */
+export function normalizeRemisePourcent(raw: number): number {
+  if (!raw || raw <= 0 || Number.isNaN(raw)) return 0;
+  const p = raw > 1 ? raw / 100 : raw;
+  return Math.min(1, p);
+}
+
+export function computeRemiseFcfa(
+  brutHT: number,
+  remiseMontant = 0,
+  remisePourcent = 0
+): number {
+  if (brutHT <= 0) return 0;
+  const p = normalizeRemisePourcent(remisePourcent);
+  if (p > 0) return Math.min(brutHT, Math.round(brutHT * p));
+  return Math.min(brutHT, Math.max(0, Math.round(remiseMontant || 0)));
+}
+
+export function labelRemise(remisePourcent = 0): string {
+  const p = normalizeRemisePourcent(remisePourcent);
+  if (p > 0) return `Remise ${Math.round(p * 100)} %`;
+  return "Remise";
+}
 
 export function parseDetailsJson(raw: string | null | undefined): string[] {
   if (!raw) return [];
@@ -72,14 +101,27 @@ export function computeTotauxFacture(
   lignes: { prix: number }[],
   reliquat: number,
   tauxTVA: number,
-  montantPaye = 0
+  montantPaye = 0,
+  remiseMontant = 0,
+  remisePourcent = 0
 ): TotauxFacture {
-  const totalHT = lignes.reduce((s, l) => s + l.prix, 0);
+  const brutHT = lignes.reduce((s, l) => s + l.prix, 0);
+  const remise = computeRemiseFcfa(brutHT, remiseMontant, remisePourcent);
+  const totalHT = Math.max(0, brutHT - remise);
   const tva = Math.round(totalHT * tauxTVA);
   const totalTTC = totalHT + tva;
   const totalGeneral = totalTTC + reliquat;
   const resteAPayer = Math.max(0, totalGeneral - montantPaye);
-  return { totalHT, tva, totalTTC, reliquat, totalGeneral, resteAPayer };
+  return {
+    brutHT,
+    remise,
+    totalHT,
+    tva,
+    totalTTC,
+    reliquat,
+    totalGeneral,
+    resteAPayer,
+  };
 }
 
 /** Extrait la TVA d'un montant TTC (ex. écriture journal bancaire). */
@@ -123,10 +165,15 @@ export function factureSoumise(statut: string): boolean {
   return statut !== "BROUILLON" && statut !== "ANNULE";
 }
 
+/**
+ * Champs d'approbation à appliquer sur une facture.
+ * Si `autoApprove` (créateur = CEO / Admin), pas de file d'attente.
+ */
 export function approvalFieldsForFacture(
   statut: string,
-  demandePar: string,
-  existing?: { statut: string; statutApprobation: string }
+  acteurNom: string,
+  existing?: { statut: string; statutApprobation: string },
+  options?: { autoApprove?: boolean }
 ) {
   const cleared = {
     demandePar: null as string | null,
@@ -147,9 +194,20 @@ export function approvalFieldsForFacture(
     return {};
   }
 
+  if (options?.autoApprove) {
+    return {
+      statutApprobation: "APPROUVE" as const,
+      demandePar: null as string | null,
+      demandeAt: null as Date | null,
+      approuvePar: acteurNom,
+      approuveAt: new Date(),
+      motifRefus: null as string | null,
+    };
+  }
+
   return {
     statutApprobation: "EN_ATTENTE_CEO" as const,
-    demandePar,
+    demandePar: acteurNom,
     demandeAt: new Date(),
     approuvePar: null,
     approuveAt: null,

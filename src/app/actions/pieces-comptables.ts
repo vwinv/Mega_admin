@@ -267,6 +267,8 @@ export async function listFacturesArchives(): Promise<FactureArchiveRow[]> {
       date: true,
       statut: true,
       reliquat: true,
+      remiseMontant: true,
+      remisePourcent: true,
       tauxTVA: true,
       montantPaye: true,
       client: { select: { nom: true } },
@@ -282,7 +284,9 @@ export async function listFacturesArchives(): Promise<FactureArchiveRow[]> {
       f.lignes,
       f.reliquat,
       f.tauxTVA,
-      f.montantPaye
+      f.montantPaye,
+      f.remiseMontant,
+      f.remisePourcent
     );
     return {
       id: f.id,

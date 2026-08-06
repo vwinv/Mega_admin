@@ -9,12 +9,14 @@ import {
   detailsToJson,
   nextNumeroDevis,
   nextNumeroFacture,
+  normalizeRemisePourcent,
   parseDetailsJson,
   type LigneDoc,
 } from "@/lib/facturation";
 import { ensureCaisseMirrorFromJournal, isCashMode } from "@/lib/cash-sync";
 import { ensureNumeroFactureUnique, nextNumeroPieceBanque } from "@/lib/numero-piece";
 import { prisma } from "@/lib/prisma";
+import { canApproveCeo } from "@/lib/roles";
 import { syncSignatureForFacture } from "@/lib/signatures";
 
 const PATHS = [
@@ -206,17 +208,27 @@ export async function listDevis(): Promise<DevisRow[]> {
     include: { client: true, lignes: true, facture: { select: { id: true } } },
     orderBy: { date: "desc" },
   });
-  return rows.map((d) => ({
-    id: d.id,
-    numero: d.numero,
-    titre: d.titre,
-    date: d.date.toISOString(),
-    statut: d.statut,
-    clientNom: d.client.nom,
-    clientId: d.clientId,
-    totalHT: d.lignes.reduce((s, l) => s + l.prix, 0),
-    hasFacture: !!d.facture,
-  }));
+  return rows.map((d) => {
+    const totaux = computeTotauxFacture(
+      d.lignes,
+      d.reliquat,
+      d.tauxTVA,
+      0,
+      d.remiseMontant,
+      d.remisePourcent
+    );
+    return {
+      id: d.id,
+      numero: d.numero,
+      titre: d.titre,
+      date: d.date.toISOString(),
+      statut: d.statut,
+      clientNom: d.client.nom,
+      clientId: d.clientId,
+      totalHT: totaux.totalHT,
+      hasFacture: !!d.facture,
+    };
+  });
 }
 
 export async function listFactures(): Promise<FactureRow[]> {
@@ -229,7 +241,9 @@ export async function listFactures(): Promise<FactureRow[]> {
       f.lignes,
       f.reliquat,
       f.tauxTVA,
-      f.montantPaye
+      f.montantPaye,
+      f.remiseMontant,
+      f.remisePourcent
     );
     return {
       id: f.id,
@@ -263,6 +277,8 @@ export async function getDevisComplet(id: string) {
     notes: d.notes,
     reliquat: d.reliquat,
     reliquatLabel: d.reliquatLabel,
+    remiseMontant: d.remiseMontant,
+    remisePourcent: d.remisePourcent,
     tauxTVA: d.tauxTVA,
     client: d.client,
     factureId: d.facture?.id ?? null,
@@ -275,7 +291,14 @@ export async function getDevisComplet(id: string) {
       prix: l.prix,
       styleAccent: l.styleAccent,
     })),
-    totalHT: d.lignes.reduce((s, l) => s + l.prix, 0),
+    totalHT: computeTotauxFacture(
+      d.lignes,
+      d.reliquat,
+      d.tauxTVA,
+      0,
+      d.remiseMontant,
+      d.remisePourcent
+    ).totalHT,
     entreprise: params,
   };
 }
@@ -295,7 +318,9 @@ export async function getFactureComplet(id: string) {
     f.lignes,
     f.reliquat,
     f.tauxTVA,
-    f.montantPaye
+    f.montantPaye,
+    f.remiseMontant,
+    f.remisePourcent
   );
   return {
     id: f.id,
@@ -306,6 +331,8 @@ export async function getFactureComplet(id: string) {
     notes: f.notes,
     reliquat: f.reliquat,
     reliquatLabel: f.reliquatLabel,
+    remiseMontant: f.remiseMontant,
+    remisePourcent: f.remisePourcent,
     tauxTVA: f.tauxTVA,
     montantPaye: f.montantPaye,
     datePaiement: f.datePaiement?.toISOString() ?? null,
@@ -341,6 +368,8 @@ export async function saveDevis(
     notes?: string;
     reliquat?: number;
     reliquatLabel?: string;
+    remiseMontant?: number;
+    remisePourcent?: number;
     tauxTVA?: number;
     lignes: LigneDoc[];
   }
@@ -356,6 +385,11 @@ export async function saveDevis(
 
   const reliquat = Math.max(0, Math.round(input.reliquat ?? 0) || 0);
   const reliquatLabel = input.reliquatLabel?.trim() || "Reliquat";
+  const remisePourcent = normalizeRemisePourcent(Number(input.remisePourcent ?? 0) || 0);
+  const remiseMontant =
+    remisePourcent > 0
+      ? 0
+      : Math.max(0, Math.round(input.remiseMontant ?? 0) || 0);
   const tauxTVA = Math.max(0, Number(input.tauxTVA ?? 0) || 0);
 
   const lignesData = input.lignes.map((l, i) => ({
@@ -379,6 +413,8 @@ export async function saveDevis(
         notes: input.notes?.trim() || null,
         reliquat,
         reliquatLabel,
+        remiseMontant,
+        remisePourcent,
         tauxTVA,
         lignes: { create: lignesData },
       },
@@ -406,6 +442,8 @@ export async function saveDevis(
       notes: input.notes?.trim() || null,
       reliquat,
       reliquatLabel,
+      remiseMontant,
+      remisePourcent,
       tauxTVA,
       lignes: { create: lignesData },
     },
@@ -434,6 +472,8 @@ export async function saveFacture(
     statut?: string;
     reliquat?: number;
     reliquatLabel?: string;
+    remiseMontant?: number;
+    remisePourcent?: number;
     tauxTVA?: number;
     notes?: string;
     lignes: LigneDoc[];
@@ -453,6 +493,15 @@ export async function saveFacture(
     input.tauxTVA === undefined
       ? tauxDefaut
       : Math.max(0, Number(input.tauxTVA) || 0);
+  const remisePourcent = normalizeRemisePourcent(
+    Number(input.remisePourcent ?? 0) || 0
+  );
+  const remiseMontant =
+    remisePourcent > 0
+      ? 0
+      : Math.max(0, Math.round(input.remiseMontant ?? 0) || 0);
+  const reliquat = Math.max(0, Math.round(input.reliquat ?? 0) || 0);
+  const reliquatLabel = input.reliquatLabel?.trim() || "Reliquat";
 
   const lignesData = input.lignes.map((l, i) => ({
     ordre: i,
@@ -463,15 +512,21 @@ export async function saveFacture(
   }));
 
   const statutFinal = input.statut ?? "BROUILLON";
+  const autoApprove = canApproveCeo(guard.role);
 
   if (input.id) {
     const existing = await prisma.facture.findUnique({ where: { id: input.id } });
     if (!existing) return { ok: false, error: "Facture introuvable." };
 
-    const approval = approvalFieldsForFacture(statutFinal, guard.nom, {
-      statut: existing.statut,
-      statutApprobation: existing.statutApprobation,
-    });
+    const approval = approvalFieldsForFacture(
+      statutFinal,
+      guard.nom,
+      {
+        statut: existing.statut,
+        statutApprobation: existing.statutApprobation,
+      },
+      { autoApprove }
+    );
 
     await prisma.factureLigne.deleteMany({ where: { factureId: input.id } });
     await prisma.facture.update({
@@ -481,8 +536,10 @@ export async function saveFacture(
         date: parseDate(input.date),
         clientId: input.clientId,
         statut: statutFinal,
-        reliquat: Math.max(0, Math.round(input.reliquat ?? 0) || 0),
-        reliquatLabel: input.reliquatLabel?.trim() || "Reliquat",
+        reliquat,
+        reliquatLabel,
+        remiseMontant,
+        remisePourcent,
         notes: input.notes?.trim() || null,
         tauxTVA,
         ...approval,
@@ -501,7 +558,9 @@ export async function saveFacture(
   const numeroErr = await ensureNumeroFactureUnique(prisma, numero);
   if (numeroErr) return { ok: false, error: numeroErr };
 
-  const approval = approvalFieldsForFacture(statutFinal, guard.nom);
+  const approval = approvalFieldsForFacture(statutFinal, guard.nom, undefined, {
+    autoApprove,
+  });
   const created = await prisma.facture.create({
     data: {
       numero,
@@ -509,8 +568,10 @@ export async function saveFacture(
       date: parseDate(input.date),
       clientId: input.clientId,
       statut: statutFinal,
-      reliquat: Math.max(0, Math.round(input.reliquat ?? 0) || 0),
-      reliquatLabel: input.reliquatLabel?.trim() || "Reliquat",
+      reliquat,
+      reliquatLabel,
+      remiseMontant,
+      remisePourcent,
       notes: input.notes?.trim() || null,
       tauxTVA,
       ...approval,
@@ -553,6 +614,13 @@ export async function convertirDevisEnFacture(
   const numeroErr = await ensureNumeroFactureUnique(prisma, numero);
   if (numeroErr) return { ok: false, error: numeroErr };
 
+  const approval = approvalFieldsForFacture(
+    "ENVOYE",
+    guard.nom,
+    undefined,
+    { autoApprove: canApproveCeo(guard.role) }
+  );
+
   const facture = await prisma.facture.create({
     data: {
       numero,
@@ -563,10 +631,10 @@ export async function convertirDevisEnFacture(
       statut: "ENVOYE",
       reliquat: devis.reliquat,
       reliquatLabel: devis.reliquatLabel || "Reliquat",
+      remiseMontant: devis.remiseMontant,
+      remisePourcent: devis.remisePourcent,
       tauxTVA: devis.tauxTVA,
-      statutApprobation: "EN_ATTENTE_CEO",
-      demandePar: guard.nom,
-      demandeAt: new Date(),
+      ...approval,
       lignes: {
         create: devis.lignes.map((l) => ({
           ordre: l.ordre,
@@ -631,7 +699,9 @@ export async function enregistrerPaiementFacture(
     facture.lignes,
     facture.reliquat,
     facture.tauxTVA,
-    facture.montantPaye
+    facture.montantPaye,
+    facture.remiseMontant,
+    facture.remisePourcent
   );
 
   if (montant <= 0) return { ok: false, error: "Montant invalide." };
@@ -656,7 +726,9 @@ export async function enregistrerPaiementFacture(
     facture.lignes,
     facture.reliquat,
     facture.tauxTVA,
-    nouveauPaye
+    nouveauPaye,
+    facture.remiseMontant,
+    facture.remisePourcent
   );
   const statut =
     totauxApres.resteAPayer === 0
@@ -764,7 +836,9 @@ export async function getRecuPaiement(operationId: string) {
     facture.lignes,
     facture.reliquat,
     facture.tauxTVA,
-    facture.montantPaye
+    facture.montantPaye,
+    facture.remiseMontant,
+    facture.remisePourcent
   );
 
   const paiements = await prisma.operation.findMany({
@@ -899,7 +973,14 @@ export async function getFacturationStats() {
   let encaisse = 0;
   let enAttente = 0;
   for (const f of factures) {
-    const t = computeTotauxFacture(f.lignes, f.reliquat, f.tauxTVA, f.montantPaye);
+    const t = computeTotauxFacture(
+      f.lignes,
+      f.reliquat,
+      f.tauxTVA,
+      f.montantPaye,
+      f.remiseMontant,
+      f.remisePourcent
+    );
     facture += t.totalGeneral;
     encaisse += f.montantPaye;
     enAttente += t.resteAPayer;

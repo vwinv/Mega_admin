@@ -11,7 +11,7 @@ import {
 } from "@/app/actions/facturation";
 import { DevisPrintView } from "@/components/FacturationPrint";
 import { formatFcfaLabel } from "@/lib/format";
-import { STATUTS_DEVIS, STATUT_DEVIS_LABELS, type LigneDoc } from "@/lib/facturation";
+import { STATUTS_DEVIS, STATUT_DEVIS_LABELS, computeTotauxFacture, labelRemise, type LigneDoc } from "@/lib/facturation";
 import {
   Alert,
   Button,
@@ -164,6 +164,8 @@ export function DevisDetailClient({
     factureId?: string | null;
     reliquat?: number;
     reliquatLabel?: string;
+    remiseMontant?: number;
+    remisePourcent?: number;
     tauxTVA?: number;
     lignes: LigneDoc[];
     totalHT: number;
@@ -194,6 +196,21 @@ export function DevisDetailClient({
   const [reliquatLabel, setReliquatLabel] = useState(
     devis.reliquatLabel || "Reliquat"
   );
+  const [remiseMode, setRemiseMode] = useState<"aucune" | "montant" | "pourcent">(
+    (devis.remisePourcent ?? 0) > 0
+      ? "pourcent"
+      : (devis.remiseMontant ?? 0) > 0
+        ? "montant"
+        : "aucune"
+  );
+  const [remiseMontant, setRemiseMontant] = useState(
+    String(devis.remiseMontant ?? 0)
+  );
+  const [remisePourcentAffiche, setRemisePourcentAffiche] = useState(() => {
+    const p = devis.remisePourcent ?? 0;
+    if (p <= 0) return "";
+    return String(Math.round(p * 1000) / 10);
+  });
   const [tauxTVA, setTauxTVA] = useState(devis.tauxTVA ?? 0);
   const [converting, setConverting] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -201,12 +218,22 @@ export function DevisDetailClient({
 
   const clientNom =
     devis.clientNom ?? clients.find((c) => c.id === clientId)?.nom ?? "";
-  const totalHT = lignes.reduce((s, l) => s + l.prix, 0);
   const rel = parseInt(reliquat, 10) || 0;
   const tauxDefaut = devis.entreprise?.tauxTVA ?? 0.18;
-  const tva = Math.round(totalHT * tauxTVA);
-  const totalTTC = totalHT + tva;
-  const totalGeneral = totalTTC + rel;
+  const remisePourcentSave =
+    remiseMode === "pourcent"
+      ? (parseFloat(remisePourcentAffiche.replace(",", ".")) || 0) / 100
+      : 0;
+  const remiseMontantSave =
+    remiseMode === "montant" ? parseInt(remiseMontant, 10) || 0 : 0;
+  const totaux = computeTotauxFacture(
+    lignes,
+    rel,
+    tauxTVA,
+    0,
+    remiseMontantSave,
+    remisePourcentSave
+  );
 
   async function handleSave(e: FormEvent) {
     e.preventDefault();
@@ -221,6 +248,8 @@ export function DevisDetailClient({
       notes,
       reliquat: rel,
       reliquatLabel,
+      remiseMontant: remiseMontantSave,
+      remisePourcent: remisePourcentSave,
       tauxTVA,
       lignes: lignes.map((l, i) => ({ ...l, ordre: i })),
     });
@@ -402,7 +431,58 @@ export function DevisDetailClient({
                 <p className="mt-3 text-sm font-medium text-amber-800">
                   {reliquatLabel || "Reliquat"} : {formatFcfaLabel(rel)} · Total
                   avec nouvelles fonctionnalités :{" "}
-                  {formatFcfaLabel(totalGeneral)}
+                  {formatFcfaLabel(totaux.totalGeneral)}
+                </p>
+              )}
+            </div>
+
+            <div className="rounded-xl border border-emerald-200 bg-emerald-50/50 p-4">
+              <h3 className="font-semibold text-slate-900">Remise</h3>
+              <p className="mt-1 text-sm text-slate-600">
+                Appliquée sur le total HT avant TVA. Choisissez un montant fixe
+                ou un pourcentage.
+              </p>
+              <div className="mt-4 grid gap-4 md:grid-cols-2">
+                <Select
+                  label="Type"
+                  value={remiseMode}
+                  onChange={(e) =>
+                    setRemiseMode(
+                      e.target.value as "aucune" | "montant" | "pourcent"
+                    )
+                  }
+                >
+                  <option value="aucune">Sans remise</option>
+                  <option value="montant">Montant (FCFA)</option>
+                  <option value="pourcent">Pourcentage (%)</option>
+                </Select>
+                {remiseMode === "montant" && (
+                  <Input
+                    label="Montant de la remise (FCFA)"
+                    type="number"
+                    min={0}
+                    step={1}
+                    value={remiseMontant}
+                    onChange={(e) => setRemiseMontant(e.target.value)}
+                  />
+                )}
+                {remiseMode === "pourcent" && (
+                  <Input
+                    label="Pourcentage (%)"
+                    type="number"
+                    min={0}
+                    max={100}
+                    step={0.1}
+                    value={remisePourcentAffiche}
+                    onChange={(e) => setRemisePourcentAffiche(e.target.value)}
+                    placeholder="ex. 10"
+                  />
+                )}
+              </div>
+              {totaux.remise > 0 && (
+                <p className="mt-3 text-sm font-medium text-emerald-800">
+                  {labelRemise(remisePourcentSave)} : −
+                  {formatFcfaLabel(totaux.remise)}
                 </p>
               )}
             </div>
@@ -438,20 +518,30 @@ export function DevisDetailClient({
                 ))}
               </div>
               <div className="mt-4 space-y-1 text-right text-sm">
+                {(totaux.remise > 0 || tauxTVA > 0) && (
+                  <p>Sous-total HT : {formatFcfaLabel(totaux.brutHT)}</p>
+                )}
+                {totaux.remise > 0 && (
+                  <p className="text-emerald-800">
+                    {labelRemise(remisePourcentSave)} : −
+                    {formatFcfaLabel(totaux.remise)}
+                  </p>
+                )}
                 <p>
-                  {tauxTVA > 0 ? "HT" : "Total"} : {formatFcfaLabel(totalHT)}
+                  {tauxTVA > 0 || totaux.remise > 0 ? "HT" : "Total"} :{" "}
+                  {formatFcfaLabel(totaux.totalHT)}
                 </p>
                 {tauxTVA > 0 && (
                   <>
-                    <p>TVA : {formatFcfaLabel(tva)}</p>
+                    <p>TVA : {formatFcfaLabel(totaux.tva)}</p>
                     <p className="font-semibold">
-                      TTC : {formatFcfaLabel(totalTTC)}
+                      TTC : {formatFcfaLabel(totaux.totalTTC)}
                     </p>
                   </>
                 )}
                 {rel > 0 && (
                   <p className="font-semibold text-amber-800">
-                    Total général : {formatFcfaLabel(totalGeneral)}
+                    Total général : {formatFcfaLabel(totaux.totalGeneral)}
                   </p>
                 )}
               </div>
@@ -481,6 +571,8 @@ export function DevisDetailClient({
           lignes={lignes}
           reliquat={rel}
           reliquatLabel={reliquatLabel}
+          remiseMontant={remiseMontantSave}
+          remisePourcent={remisePourcentSave}
           tauxTVA={tauxTVA}
           entreprise={devis.entreprise}
         />
