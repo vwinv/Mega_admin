@@ -5,6 +5,8 @@ import {
   MEGA_BRAND,
   MEGA_ROW_ALT,
   MEGA_ROW_BORDER,
+  computeTotauxFacture,
+  labelRemise,
   type LigneDoc,
 } from "@/lib/facturation";
 import type { CSSProperties } from "react";
@@ -202,6 +204,8 @@ export function DevisPrintView({
   lignes,
   reliquat,
   reliquatLabel,
+  remiseMontant = 0,
+  remisePourcent = 0,
   tauxTVA = 0,
   entreprise,
 }: {
@@ -212,6 +216,8 @@ export function DevisPrintView({
   lignes: LigneDoc[];
   reliquat?: number;
   reliquatLabel?: string;
+  remiseMontant?: number;
+  remisePourcent?: number;
   tauxTVA?: number;
   entreprise: Entreprise;
 }) {
@@ -222,10 +228,16 @@ export function DevisPrintView({
   const rel = reliquat ?? 0;
   const hasReliquat = rel > 0;
   const labelReliquat = (reliquatLabel ?? "Reliquat").trim() || "Reliquat";
-  const totalHT = lignes.reduce((s, l) => s + l.prix, 0);
-  const tva = Math.round(totalHT * tauxTVA);
-  const totalTTC = totalHT + tva;
-  const totalGeneral = totalTTC + rel;
+  const totaux = computeTotauxFacture(
+    lignes,
+    rel,
+    tauxTVA,
+    0,
+    remiseMontant,
+    remisePourcent
+  );
+  const hasRemise = totaux.remise > 0;
+  const remiseLibelle = labelRemise(remisePourcent);
   const sectionTotal = hasReliquat ? 3 : 2;
 
   return (
@@ -295,19 +307,53 @@ export function DevisPrintView({
               </tr>
             );
           })}
+          {(hasRemise || tauxTVA > 0) && (
+            <tr>
+              <td
+                className="px-3 py-2 font-semibold"
+                colSpan={2}
+                style={{ ...styleHeader, border: cellBorderWhite }}
+              >
+                Sous - Total HT
+              </td>
+              <td
+                className="px-3 py-2 text-right font-semibold"
+                style={{ ...styleHeader, border: cellBorderWhite }}
+              >
+                {formatFcfa(totaux.brutHT)}
+              </td>
+            </tr>
+          )}
+          {hasRemise && (
+            <tr>
+              <td
+                className="px-3 py-2"
+                colSpan={2}
+                style={{ ...styleWhite, border: cellBorder }}
+              >
+                {remiseLibelle}
+              </td>
+              <td
+                className="px-3 py-2 text-right"
+                style={{ ...styleWhite, border: cellBorder }}
+              >
+                − {formatFcfa(totaux.remise)}
+              </td>
+            </tr>
+          )}
           <tr>
             <td
               className="px-3 py-2 font-semibold"
               colSpan={2}
               style={{ ...styleHeader, border: cellBorderWhite }}
             >
-              {tauxTVA > 0 ? "Sous - Total HT" : "Total HT"}
+              Total HT
             </td>
             <td
               className="px-3 py-2 text-right font-semibold"
               style={{ ...styleHeader, border: cellBorderWhite }}
             >
-              {formatFcfa(totalHT)}
+              {formatFcfa(totaux.totalHT)}
             </td>
           </tr>
           {tauxTVA > 0 && (
@@ -324,7 +370,7 @@ export function DevisPrintView({
                   className="px-3 py-2 text-right"
                   style={{ ...styleWhite, border: cellBorder }}
                 >
-                  {formatFcfa(tva)}
+                  {formatFcfa(totaux.tva)}
                 </td>
               </tr>
               <tr>
@@ -339,7 +385,7 @@ export function DevisPrintView({
                   className="px-3 py-2 text-right font-semibold"
                   style={{ ...styleHeader, border: cellBorderWhite }}
                 >
-                  {formatFcfa(totalTTC)}
+                  {formatFcfa(totaux.totalTTC)}
                 </td>
               </tr>
             </>
@@ -433,7 +479,7 @@ export function DevisPrintView({
                   className="px-3 py-2 text-right"
                   style={{ ...styleHeader, border: cellBorderWhite }}
                 >
-                  {formatFcfa(totalTTC)}
+                  {formatFcfa(totaux.totalTTC)}
                 </td>
               </tr>
               <tr>
@@ -447,7 +493,7 @@ export function DevisPrintView({
                   className="px-3 py-2 text-right text-lg font-bold"
                   style={{ ...styleAlt, border: cellBorder }}
                 >
-                  {formatFcfa(totalGeneral)}
+                  {formatFcfa(totaux.totalGeneral)}
                 </td>
               </tr>
             </tbody>
@@ -469,6 +515,7 @@ export function FacturePrintView({
   lignes,
   reliquat,
   reliquatLabel,
+  remisePourcent = 0,
   tauxTVA,
   totaux,
   entreprise,
@@ -480,8 +527,11 @@ export function FacturePrintView({
   lignes: LigneDoc[];
   reliquat: number;
   reliquatLabel: string;
+  remisePourcent?: number;
   tauxTVA: number;
   totaux: {
+    brutHT: number;
+    remise: number;
     totalHT: number;
     tva: number;
     totalTTC: number;
@@ -494,7 +544,9 @@ export function FacturePrintView({
   const tel =
     entreprise?.telephoneContact ?? entreprise?.telephone ?? "78 450 40 52";
   const hasReliquat = reliquat > 0;
+  const hasRemise = totaux.remise > 0;
   const labelReliquat = reliquatLabel.trim() || "Reliquat";
+  const remiseLibelle = labelRemise(remisePourcent);
   const sectionTotal = hasReliquat ? 3 : 2;
 
   return (
@@ -535,13 +587,47 @@ export function FacturePrintView({
               </tr>
             );
           })}
+          {(hasRemise || tauxTVA > 0) && (
+            <tr>
+              <td
+                className="px-3 py-2 font-semibold"
+                colSpan={2}
+                style={{ ...styleHeader, border: cellBorderWhite }}
+              >
+                Sous - Total HT
+              </td>
+              <td
+                className="px-3 py-2 text-right font-semibold"
+                style={{ ...styleHeader, border: cellBorderWhite }}
+              >
+                {formatFcfa(totaux.brutHT)}
+              </td>
+            </tr>
+          )}
+          {hasRemise && (
+            <tr>
+              <td
+                className="px-3 py-2"
+                colSpan={2}
+                style={{ ...styleWhite, border: cellBorder }}
+              >
+                {remiseLibelle}
+              </td>
+              <td
+                className="px-3 py-2 text-right"
+                style={{ ...styleWhite, border: cellBorder }}
+              >
+                − {formatFcfa(totaux.remise)}
+              </td>
+            </tr>
+          )}
           <tr>
             <td
               className="px-3 py-2 font-semibold"
               colSpan={2}
               style={{ ...styleHeader, border: cellBorderWhite }}
             >
-              {tauxTVA > 0 ? "Sous - Total HT" : "Total"}
+              {tauxTVA > 0 || hasRemise ? "Total HT" : "Total"}
             </td>
             <td
               className="px-3 py-2 text-right font-semibold"

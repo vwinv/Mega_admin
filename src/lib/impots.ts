@@ -93,7 +93,9 @@ async function getFacturesTvaParMois(
       f.lignes,
       f.reliquat,
       f.tauxTVA,
-      f.montantPaye
+      f.montantPaye,
+      f.remiseMontant,
+      f.remisePourcent
     );
     if (totaux.tva <= 0) continue;
 

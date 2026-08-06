@@ -273,6 +273,10 @@ model Devis {
   facture       Facture?
   reliquat      Int          @default(0)
   reliquatLabel String       @default("Reliquat")
+  /** Remise fixe en FCFA (ignorée si remisePourcent > 0) */
+  remiseMontant Int          @default(0)
+  /** Remise en fraction (0.1 = 10 %) ; prioritaire sur remiseMontant */
+  remisePourcent Float       @default(0)
   /** 0 = sans TVA ; ex. 0.18 = TVA 18 % */
   tauxTVA       Float        @default(0)
   notes         String?
@@ -308,6 +312,10 @@ model Facture {
   lignes        FactureLigne[]
   reliquat      Int          @default(0)
   reliquatLabel String       @default("Reliquat")
+  /** Remise fixe en FCFA (ignorée si remisePourcent > 0) */
+  remiseMontant Int          @default(0)
+  /** Remise en fraction (0.1 = 10 %) ; prioritaire sur remiseMontant */
+  remisePourcent Float       @default(0)
   tauxTVA       Float        @default(0.18)
   montantPaye   Int          @default(0)
   datePaiement  DateTime?

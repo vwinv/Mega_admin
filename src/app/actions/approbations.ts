@@ -99,7 +99,9 @@ export async function getPendingApprovals(): Promise<ApprobationRow[]> {
         f.lignes,
         f.reliquat,
         f.tauxTVA,
-        f.montantPaye
+        f.montantPaye,
+        f.remiseMontant,
+        f.remisePourcent
       );
       return {
         id: f.id,

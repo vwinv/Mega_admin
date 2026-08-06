@@ -19,6 +19,7 @@ import {
   STATUTS_FACTURE,
   STATUT_FACTURE_LABELS,
   computeTotauxFacture,
+  labelRemise,
   type LigneDoc,
 } from "@/lib/facturation";
 import { STATUT_APPROBATION_LABELS } from "@/lib/approbation";
@@ -154,6 +155,8 @@ export function FactureDetailClient({
     clientId: string;
     reliquat: number;
     reliquatLabel: string;
+    remiseMontant?: number;
+    remisePourcent?: number;
     tauxTVA: number;
     montantPaye: number;
     datePaiement?: string | null;
@@ -190,6 +193,21 @@ export function FactureDetailClient({
   const [reliquatLabel, setReliquatLabel] = useState(
     facture.reliquatLabel || "Reliquat"
   );
+  const [remiseMode, setRemiseMode] = useState<"aucune" | "montant" | "pourcent">(
+    (facture.remisePourcent ?? 0) > 0
+      ? "pourcent"
+      : (facture.remiseMontant ?? 0) > 0
+        ? "montant"
+        : "aucune"
+  );
+  const [remiseMontant, setRemiseMontant] = useState(
+    String(facture.remiseMontant ?? 0)
+  );
+  const [remisePourcentAffiche, setRemisePourcentAffiche] = useState(() => {
+    const p = facture.remisePourcent ?? 0;
+    if (p <= 0) return "";
+    return String(Math.round(p * 1000) / 10);
+  });
   const [lignes, setLignes] = useState<LigneDoc[]>(
     facture.lignes.length > 0 ? facture.lignes : [emptyLigne(0)]
   );
@@ -206,11 +224,19 @@ export function FactureDetailClient({
     facture.clientNom ?? clients.find((c) => c.id === clientId)?.nom ?? "";
   const rel = parseInt(reliquat, 10) || 0;
   const tauxDefaut = facture.entreprise?.tauxTVA ?? 0.18;
+  const remisePourcentSave =
+    remiseMode === "pourcent"
+      ? (parseFloat(remisePourcentAffiche.replace(",", ".")) || 0) / 100
+      : 0;
+  const remiseMontantSave =
+    remiseMode === "montant" ? parseInt(remiseMontant, 10) || 0 : 0;
   const totaux = computeTotauxFacture(
     lignes,
     rel,
     tauxTVA,
-    facture.montantPaye
+    facture.montantPaye,
+    remiseMontantSave,
+    remisePourcentSave
   );
 
   async function handleSave(e: FormEvent) {
@@ -226,6 +252,8 @@ export function FactureDetailClient({
       notes,
       reliquat: rel,
       reliquatLabel,
+      remiseMontant: remiseMontantSave,
+      remisePourcent: remisePourcentSave,
       tauxTVA,
       lignes: lignes.map((l, i) => ({ ...l, ordre: i })),
     });
@@ -572,6 +600,57 @@ export function FactureDetailClient({
               )}
             </div>
 
+            <div className="rounded-xl border border-emerald-200 bg-emerald-50/50 p-4">
+              <h3 className="font-semibold text-slate-900">Remise</h3>
+              <p className="mt-1 text-sm text-slate-600">
+                Appliquée sur le total HT avant TVA. Montant fixe ou
+                pourcentage.
+              </p>
+              <div className="mt-4 grid gap-4 md:grid-cols-2">
+                <Select
+                  label="Type"
+                  value={remiseMode}
+                  onChange={(e) =>
+                    setRemiseMode(
+                      e.target.value as "aucune" | "montant" | "pourcent"
+                    )
+                  }
+                >
+                  <option value="aucune">Sans remise</option>
+                  <option value="montant">Montant (FCFA)</option>
+                  <option value="pourcent">Pourcentage (%)</option>
+                </Select>
+                {remiseMode === "montant" && (
+                  <Input
+                    label="Montant de la remise (FCFA)"
+                    type="number"
+                    min={0}
+                    step={1}
+                    value={remiseMontant}
+                    onChange={(e) => setRemiseMontant(e.target.value)}
+                  />
+                )}
+                {remiseMode === "pourcent" && (
+                  <Input
+                    label="Pourcentage (%)"
+                    type="number"
+                    min={0}
+                    max={100}
+                    step={0.1}
+                    value={remisePourcentAffiche}
+                    onChange={(e) => setRemisePourcentAffiche(e.target.value)}
+                    placeholder="ex. 10"
+                  />
+                )}
+              </div>
+              {totaux.remise > 0 && (
+                <p className="mt-3 text-sm font-medium text-emerald-800">
+                  {labelRemise(remisePourcentSave)} : −
+                  {formatFcfaLabel(totaux.remise)}
+                </p>
+              )}
+            </div>
+
             <div>
               <div className="mb-3 flex items-center justify-between">
                 <h3 className="font-semibold">Lignes</h3>
@@ -602,8 +681,17 @@ export function FactureDetailClient({
                 ))}
               </div>
               <div className="mt-4 space-y-1 text-right text-sm">
+                {(totaux.remise > 0 || tauxTVA > 0) && (
+                  <p>Sous-total HT : {formatFcfaLabel(totaux.brutHT)}</p>
+                )}
+                {totaux.remise > 0 && (
+                  <p className="text-emerald-800">
+                    {labelRemise(remisePourcentSave)} : −
+                    {formatFcfaLabel(totaux.remise)}
+                  </p>
+                )}
                 <p>
-                  {tauxTVA > 0 ? "HT" : "Total"} :{" "}
+                  {tauxTVA > 0 || totaux.remise > 0 ? "HT" : "Total"} :{" "}
                   {formatFcfaLabel(totaux.totalHT)}
                 </p>
                 {tauxTVA > 0 && (
@@ -654,6 +742,7 @@ export function FactureDetailClient({
           lignes={lignes}
           reliquat={rel}
           reliquatLabel={reliquatLabel}
+          remisePourcent={remisePourcentSave}
           tauxTVA={tauxTVA}
           totaux={totaux}
           entreprise={facture.entreprise}
