@@ -386,6 +386,41 @@ export function DevisDetailClient({
                     </option>
                   )}
               </Select>
+              <Select
+                label="Remise"
+                value={remiseMode}
+                onChange={(e) =>
+                  setRemiseMode(
+                    e.target.value as "aucune" | "montant" | "pourcent"
+                  )
+                }
+              >
+                <option value="aucune">Sans remise</option>
+                <option value="montant">Montant (FCFA)</option>
+                <option value="pourcent">Pourcentage (%)</option>
+              </Select>
+              {remiseMode === "montant" && (
+                <Input
+                  label="Montant de la remise (FCFA)"
+                  type="number"
+                  min={0}
+                  step={1}
+                  value={remiseMontant}
+                  onChange={(e) => setRemiseMontant(e.target.value)}
+                />
+              )}
+              {remiseMode === "pourcent" && (
+                <Input
+                  label="Pourcentage de remise (%)"
+                  type="number"
+                  min={0}
+                  max={100}
+                  step={0.1}
+                  value={remisePourcentAffiche}
+                  onChange={(e) => setRemisePourcentAffiche(e.target.value)}
+                  placeholder="ex. 10"
+                />
+              )}
               {!isNew && (
                 <Select
                   label="Statut"
@@ -400,6 +435,14 @@ export function DevisDetailClient({
                 </Select>
               )}
             </div>
+
+            {totaux.remise > 0 && (
+              <p className="text-sm font-medium text-emerald-800">
+                {labelRemise(remisePourcentSave)} : −
+                {formatFcfaLabel(totaux.remise)} · HT après remise :{" "}
+                {formatFcfaLabel(totaux.totalHT)}
+              </p>
+            )}
 
             <div className="rounded-xl border border-amber-200 bg-amber-50/60 p-4">
               <h3 className="font-semibold text-slate-900">
@@ -432,57 +475,6 @@ export function DevisDetailClient({
                   {reliquatLabel || "Reliquat"} : {formatFcfaLabel(rel)} · Total
                   avec nouvelles fonctionnalités :{" "}
                   {formatFcfaLabel(totaux.totalGeneral)}
-                </p>
-              )}
-            </div>
-
-            <div className="rounded-xl border border-emerald-200 bg-emerald-50/50 p-4">
-              <h3 className="font-semibold text-slate-900">Remise</h3>
-              <p className="mt-1 text-sm text-slate-600">
-                Appliquée sur le total HT avant TVA. Choisissez un montant fixe
-                ou un pourcentage.
-              </p>
-              <div className="mt-4 grid gap-4 md:grid-cols-2">
-                <Select
-                  label="Type"
-                  value={remiseMode}
-                  onChange={(e) =>
-                    setRemiseMode(
-                      e.target.value as "aucune" | "montant" | "pourcent"
-                    )
-                  }
-                >
-                  <option value="aucune">Sans remise</option>
-                  <option value="montant">Montant (FCFA)</option>
-                  <option value="pourcent">Pourcentage (%)</option>
-                </Select>
-                {remiseMode === "montant" && (
-                  <Input
-                    label="Montant de la remise (FCFA)"
-                    type="number"
-                    min={0}
-                    step={1}
-                    value={remiseMontant}
-                    onChange={(e) => setRemiseMontant(e.target.value)}
-                  />
-                )}
-                {remiseMode === "pourcent" && (
-                  <Input
-                    label="Pourcentage (%)"
-                    type="number"
-                    min={0}
-                    max={100}
-                    step={0.1}
-                    value={remisePourcentAffiche}
-                    onChange={(e) => setRemisePourcentAffiche(e.target.value)}
-                    placeholder="ex. 10"
-                  />
-                )}
-              </div>
-              {totaux.remise > 0 && (
-                <p className="mt-3 text-sm font-medium text-emerald-800">
-                  {labelRemise(remisePourcentSave)} : −
-                  {formatFcfaLabel(totaux.remise)}
                 </p>
               )}
             </div>
