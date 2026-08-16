@@ -1247,9 +1247,13 @@ export function SignatureWizardClient() {
                 )}
                 {!isImage && !isPdf && (
                   <div className="flex h-full flex-col items-center justify-center p-8 text-center text-slate-500">
-                    <p className="font-medium text-slate-700">{file?.name}</p>
+                    <p className="font-medium text-slate-700">
+                      {effectiveName || "Document"}
+                    </p>
                     <p className="mt-2 text-sm">
-                      Aperçu limité — placez et déplacez les champs ici.
+                      Aperçu disponible pour PDF et images. Pour Word, convertissez
+                      en PDF pour voir le document ici — vous pouvez quand même
+                      placer les champs.
                     </p>
                   </div>
                 )}
