@@ -27,6 +27,7 @@ import {
 import { SignatureCaptureModal } from "@/components/SignatureCaptureModal";
 import { MegaLogo } from "@/components/MegaLogo";
 import { PdfPageViewer } from "@/components/PdfPageViewer";
+import { DocxPageViewer } from "@/components/DocxPageViewer";
 import {
   composeSignatureReturnStamp,
   initialsFromName,
@@ -70,6 +71,11 @@ export function PublicSignClient({ session }: { session: PublicSignSession }) {
   const isPdf =
     Boolean(session.fichierMime?.includes("pdf")) ||
     session.fichierNom.toLowerCase().endsWith(".pdf");
+  const isWord =
+    Boolean(session.fichierMime?.includes("wordprocessingml")) ||
+    session.fichierMime === "application/msword" ||
+    session.fichierNom.toLowerCase().endsWith(".docx") ||
+    session.fichierNom.toLowerCase().endsWith(".doc");
 
   // Détecte le format réel du PDF / image via PdfPageViewer.onPageSize
 
@@ -364,6 +370,24 @@ export function PublicSignClient({ session }: { session: PublicSignSession }) {
                 />
               ) : isPdf ? (
                 <PdfPageViewer
+                  url={session.documentUrl}
+                  width={pageBox.w}
+                  height={pageBox.h}
+                  onPageSize={(size) => {
+                    setNatural((prev) => {
+                      if (
+                        prev &&
+                        Math.abs(prev.w - size.w) < 0.5 &&
+                        Math.abs(prev.h - size.h) < 0.5
+                      ) {
+                        return prev;
+                      }
+                      return size;
+                    });
+                  }}
+                />
+              ) : isWord ? (
+                <DocxPageViewer
                   url={session.documentUrl}
                   width={pageBox.w}
                   height={pageBox.h}

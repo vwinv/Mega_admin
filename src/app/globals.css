@@ -257,3 +257,19 @@ main table tbody tr:last-child td {
   background-size: auto, 80px 80px, 80px 80px;
   background-position: 0 0, 0 0, 40px 40px;
 }
+
+/* Aperçu Word (docx-preview) */
+.docx-host {
+  font-size: 11pt;
+  line-height: 1.35;
+  color: #111;
+}
+.docx-host .mega-docx-wrapper {
+  background: #fff;
+  padding: 0 !important;
+}
+.docx-host section.mega-docx {
+  box-shadow: none !important;
+  margin: 0 auto !important;
+  background: #fff;
+}

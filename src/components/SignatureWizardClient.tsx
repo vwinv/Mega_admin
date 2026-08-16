@@ -17,6 +17,7 @@ import {
 import { createAndSendEnvelope, getEnvelopeShareSource } from "@/app/actions/signature-docs";
 import { usePermissions } from "@/components/PermissionsProvider";
 import { PdfPageViewer } from "@/components/PdfPageViewer";
+import { DocxPageViewer } from "@/components/DocxPageViewer";
 import { Alert, Button, Input, Select } from "@/components/ui";
 import {
   DEST_COLORS,
@@ -256,7 +257,7 @@ export function SignatureWizardClient() {
     setPreviewUrl(url);
   }
 
-  function isPreviewableFile(f: File): "pdf" | "image" | null {
+  function isPreviewableFile(f: File): "pdf" | "image" | "word" | null {
     const name = f.name.toLowerCase();
     const type = (f.type || "").toLowerCase();
     if (type === "application/pdf" || type.includes("pdf") || name.endsWith(".pdf")) {
@@ -267,6 +268,14 @@ export function SignatureWizardClient() {
       /\.(png|jpe?g|webp|gif)$/i.test(name)
     ) {
       return "image";
+    }
+    if (
+      type.includes("wordprocessingml") ||
+      type === "application/msword" ||
+      name.endsWith(".docx") ||
+      name.endsWith(".doc")
+    ) {
+      return "word";
     }
     return null;
   }
@@ -696,9 +705,18 @@ export function SignatureWizardClient() {
 
   const effectiveMime = file?.type || sourceMime || "";
   const effectiveName = file?.name || sourceFileName || "";
-  const isImage = Boolean(effectiveMime.startsWith("image/"));
+  const isImage = Boolean(
+    effectiveMime.startsWith("image/") ||
+      /\.(png|jpe?g|webp|gif)$/i.test(effectiveName)
+  );
   const isPdf = Boolean(
     effectiveMime.includes("pdf") || effectiveName.toLowerCase().endsWith(".pdf")
+  );
+  const isWord = Boolean(
+    effectiveMime.includes("wordprocessingml") ||
+      effectiveMime === "application/msword" ||
+      effectiveName.toLowerCase().endsWith(".docx") ||
+      effectiveName.toLowerCase().endsWith(".doc")
   );
   const hasDocument = Boolean(file || sourceEnvelopeId);
 
@@ -1245,15 +1263,33 @@ export function SignatureWizardClient() {
                     }}
                   />
                 )}
-                {!isImage && !isPdf && (
+                {isWord && previewUrl && (
+                  <DocxPageViewer
+                    url={previewUrl}
+                    width={docBox.w}
+                    height={docBox.h}
+                    onPageSize={(size) => {
+                      setDocNatural((prev) => {
+                        if (
+                          prev &&
+                          Math.abs(prev.w - size.w) < 0.5 &&
+                          Math.abs(prev.h - size.h) < 0.5
+                        ) {
+                          return prev;
+                        }
+                        return size;
+                      });
+                    }}
+                  />
+                )}
+                {!isImage && !isPdf && !isWord && (
                   <div className="flex h-full flex-col items-center justify-center p-8 text-center text-slate-500">
                     <p className="font-medium text-slate-700">
                       {effectiveName || "Document"}
                     </p>
                     <p className="mt-2 text-sm">
-                      Aperçu disponible pour PDF et images. Pour Word, convertissez
-                      en PDF pour voir le document ici — vous pouvez quand même
-                      placer les champs.
+                      Format non prévisualisable — placez quand même les champs
+                      ici.
                     </p>
                   </div>
                 )}
