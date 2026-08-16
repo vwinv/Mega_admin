@@ -65,9 +65,14 @@ export function PdfPageViewer({
         if (cancelled) return;
 
         const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
+        // Worker servi en local (même version que pdfjs-dist)
         pdfjs.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
 
-        const doc = await pdfjs.getDocument({ data: data.slice(0) }).promise;
+        const doc = await pdfjs.getDocument({
+          data: data.slice(0),
+          // Évite certains blocages CORS / worker en prod
+          useSystemFonts: true,
+        }).promise;
         if (cancelled) return;
         const page = await doc.getPage(1);
         const base = page.getViewport({ scale: 1 });
@@ -100,8 +105,16 @@ export function PdfPageViewer({
 
   // 2) Peindre quand dimensions + PDF prêts (resize = re-render sans re-fetch)
   useEffect(() => {
-    if (!loaded || width <= 0 || height <= 0) return;
+    if (!loaded) return;
+    if (width <= 0 || height <= 0) {
+      // Dimensions pas encore mesurées — garder le loader, pas d’erreur
+      setLoading(true);
+      return;
+    }
     let cancelled = false;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let renderTask: { cancel?: () => void; promise: Promise<void> } | null =
+      null;
 
     async function paint() {
       try {
@@ -120,12 +133,12 @@ export function PdfPageViewer({
         const ctx = canvas.getContext("2d");
         if (!ctx) throw new Error("Canvas indisponible");
 
-        const task = page.render({
+        renderTask = page.render({
           canvasContext: ctx,
           viewport,
           canvas,
         });
-        await task.promise;
+        await renderTask!.promise;
         if (!cancelled) {
           setLoading(false);
           setError(null);
@@ -144,24 +157,43 @@ export function PdfPageViewer({
     void paint();
     return () => {
       cancelled = true;
+      try {
+        renderTask?.cancel?.();
+      } catch {
+        /* ignore */
+      }
     };
   }, [loaded, width, height]);
 
   if (useFallback) {
+    // blob: n'est pas toujours affichable via <object> — message + lien
+    const isBlob = url.startsWith("blob:");
     return (
       <div className={`relative h-full w-full bg-white ${className}`}>
-        <object
-          data={`${url}#toolbar=0&navpanes=0&view=FitH`}
-          type="application/pdf"
-          className="pointer-events-none absolute inset-0 h-full w-full"
-          aria-label="Document PDF"
-        >
-          <iframe
-            title="Document PDF"
-            src={`${url}#toolbar=0&navpanes=0&view=FitH`}
-            className="pointer-events-none absolute inset-0 h-full w-full border-0"
-          />
-        </object>
+        {!isBlob ? (
+          <object
+            data={`${url}#toolbar=0&navpanes=0&view=FitH`}
+            type="application/pdf"
+            className="pointer-events-none absolute inset-0 h-full w-full"
+            aria-label="Document PDF"
+          >
+            <iframe
+              title="Document PDF"
+              src={`${url}#toolbar=0&navpanes=0&view=FitH`}
+              className="pointer-events-none absolute inset-0 h-full w-full border-0"
+            />
+          </object>
+        ) : (
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-slate-50 p-6 text-center text-sm text-slate-600">
+            <p className="font-medium text-slate-800">
+              Aperçu PDF indisponible
+            </p>
+            <p className="max-w-sm text-xs text-slate-500">
+              {error ||
+                "Rechargez la page ou réessayez avec un autre fichier PDF."}
+            </p>
+          </div>
+        )}
       </div>
     );
   }
@@ -181,14 +213,16 @@ export function PdfPageViewer({
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-slate-50 p-6 text-center text-sm text-slate-600">
           <p className="font-medium text-slate-800">Document indisponible</p>
           <p className="max-w-sm text-xs text-slate-500">{error}</p>
-          <a
-            href={url}
-            target="_blank"
-            rel="noreferrer"
-            className="font-medium text-blue-600 underline"
-          >
-            Ouvrir / télécharger le PDF
-          </a>
+          {!url.startsWith("blob:") && (
+            <a
+              href={url}
+              target="_blank"
+              rel="noreferrer"
+              className="font-medium text-blue-600 underline"
+            >
+              Ouvrir / télécharger le PDF
+            </a>
+          )}
         </div>
       )}
     </div>

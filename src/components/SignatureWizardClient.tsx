@@ -144,7 +144,6 @@ export function SignatureWizardClient() {
   const [sourceFileName, setSourceFileName] = useState<string | null>(null);
   const [sourceMime, setSourceMime] = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [previewIsBlob, setPreviewIsBlob] = useState(false);
   const [titre, setTitre] = useState("");
   const [objet, setObjet] = useState("");
   const [message, setMessage] = useState(
@@ -177,6 +176,7 @@ export function SignatureWizardClient() {
   } | null>(null);
   const canvasRef = useRef<HTMLDivElement>(null);
   const preloadedFrom = useRef<string | null>(null);
+  const blobUrlRef = useRef<string | null>(null);
   const MIN_W = 0.06;
   const MIN_H = 0.035;
   const [docNatural, setDocNatural] = useState<{ w: number; h: number } | null>(
@@ -235,9 +235,41 @@ export function SignatureWizardClient() {
 
   useEffect(() => {
     return () => {
-      if (previewIsBlob && previewUrl) URL.revokeObjectURL(previewUrl);
+      if (blobUrlRef.current) {
+        URL.revokeObjectURL(blobUrlRef.current);
+        blobUrlRef.current = null;
+      }
     };
-  }, [previewUrl, previewIsBlob]);
+  }, []);
+
+  function clearBlobPreview() {
+    if (blobUrlRef.current) {
+      URL.revokeObjectURL(blobUrlRef.current);
+      blobUrlRef.current = null;
+    }
+  }
+
+  function setBlobPreviewFromFile(f: File) {
+    clearBlobPreview();
+    const url = URL.createObjectURL(f);
+    blobUrlRef.current = url;
+    setPreviewUrl(url);
+  }
+
+  function isPreviewableFile(f: File): "pdf" | "image" | null {
+    const name = f.name.toLowerCase();
+    const type = (f.type || "").toLowerCase();
+    if (type === "application/pdf" || type.includes("pdf") || name.endsWith(".pdf")) {
+      return "pdf";
+    }
+    if (
+      type.startsWith("image/") ||
+      /\.(png|jpe?g|webp|gif)$/i.test(name)
+    ) {
+      return "image";
+    }
+    return null;
+  }
 
   // Instantané si on vient de la page document (sessionStorage), sinon fallback API
   useEffect(() => {
@@ -261,8 +293,7 @@ export function SignatureWizardClient() {
           o ||
           `Demande de signature · ${meta.titre || meta.fichierNom.replace(/\.[^.]+$/, "")}`
       );
-      if (previewIsBlob && previewUrl) URL.revokeObjectURL(previewUrl);
-      setPreviewIsBlob(false);
+      clearBlobPreview();
       setPreviewUrl(meta.downloadHref);
       setFile(null);
       setPreloadProgress(100);
@@ -470,22 +501,21 @@ export function SignatureWizardClient() {
   }
 
   function onPickFile(f: File | null) {
-    if (previewIsBlob && previewUrl) URL.revokeObjectURL(previewUrl);
     setFile(f);
     setSourceEnvelopeId(null);
     setSourceFileName(null);
     setSourceMime(null);
+    setDocNatural(null);
     if (f) {
       setTitre((t) => t || f.name.replace(/\.[^.]+$/, ""));
-      if (f.type.startsWith("image/") || f.type === "application/pdf") {
-        setPreviewIsBlob(true);
-        setPreviewUrl(URL.createObjectURL(f));
+      if (isPreviewableFile(f)) {
+        setBlobPreviewFromFile(f);
       } else {
-        setPreviewIsBlob(false);
+        clearBlobPreview();
         setPreviewUrl(null);
       }
     } else {
-      setPreviewIsBlob(false);
+      clearBlobPreview();
       setPreviewUrl(null);
     }
   }
