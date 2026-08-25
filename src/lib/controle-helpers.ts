@@ -22,6 +22,8 @@ export const CONTROLE_FILTER_LABELS: Record<string, string> = {
   doublon: "Doublons potentiels",
   "transfert-caisse": "Transferts vers la caisse",
   "appro-caisse": "Approvisionnements caisse",
+  "transfert-banque": "Transferts vers la banque",
+  "remise-banque": "Remises en banque",
 };
 
 export const CHECKLIST_TACHES = [
@@ -47,7 +49,7 @@ export const RECOMMANDATIONS: Record<number, string> = {
   6: "Vérifier les écritures en double (même date, libellé et montant).",
   7: "Arrêter les sorties ou approvisionner la caisse.",
   8: "Réduire les dépenses ou augmenter les encaissements bancaires.",
-  9: "Créer les écritures manquantes de transfert banque → caisse.",
+  9: "Créer les écritures manquantes de transfert banque ↔ caisse.",
   10: "Réduire les dépenses ou augmenter les enveloppes.",
   11: "Réviser le budget prévisionnel ou maîtriser les dépenses.",
   12: "Virer l'excédent de caisse vers la banque.",

@@ -13,9 +13,14 @@ import {
   deleteCaisseAndJournalMirror,
   ensureJournalMirrorFromCaisse,
 } from "@/lib/cash-sync";
+import { TRANSFERT_VERS_BANQUE } from "@/lib/constants";
 import { nextNumeroPieceCaisse } from "@/lib/numero-piece";
 import { prisma } from "@/lib/prisma";
 import { computeSoldeCaisseApres } from "@/lib/tresorerie";
+import {
+  deleteMatchingRemiseEnBanque,
+  ensureRemiseEnBanque,
+} from "@/lib/transfert-caisse";
 import { syncSignatureForCaisseOperation } from "@/lib/signatures";
 import { OperationInput, montantOperationInchange, validateOperation } from "@/lib/validation";
 
@@ -89,6 +94,19 @@ export async function createOperationCaisse(
   });
 
   await ensureJournalMirrorFromCaisse(created.id);
+
+  if (
+    categorie.nom === TRANSFERT_VERS_BANQUE &&
+    input.montantType === "sortie" &&
+    !ceoPending
+  ) {
+    await ensureRemiseEnBanque({
+      montant: input.montant,
+      date: opDate,
+      codeBudgetaireId: input.codeBudgetaireId || null,
+      libelleCaisse: enriched.libelle,
+    });
+  }
 
   await logAudit({
     userId: guard.id,
@@ -188,6 +206,19 @@ export async function updateOperationCaisse(
 
   await ensureJournalMirrorFromCaisse(id);
 
+  if (
+    categorie.nom === TRANSFERT_VERS_BANQUE &&
+    input.montantType === "sortie" &&
+    !ceoPending
+  ) {
+    await ensureRemiseEnBanque({
+      montant: input.montant,
+      date: parseDate(input.date),
+      codeBudgetaireId: input.codeBudgetaireId || null,
+      libelleCaisse: enriched.libelle,
+    });
+  }
+
   await syncSignatureForCaisseOperation(id, {
     id: guard.id,
     nom: guard.nom,
@@ -223,10 +254,23 @@ export async function deleteOperationCaisse(
   const guard = await guardWrite();
   if (isGuardError(guard)) return guard;
 
-  const existing = await prisma.operationCaisse.findUnique({ where: { id } });
+  const existing = await prisma.operationCaisse.findUnique({
+    where: { id },
+    include: { categorie: true },
+  });
   if (!existing) return { ok: false, error: "Opération introuvable." };
 
+  const wasTransfertBanque =
+    existing.categorie.nom === TRANSFERT_VERS_BANQUE &&
+    (existing.sortie ?? 0) > 0;
+  const montant = existing.sortie ?? 0;
+  const date = existing.date;
+
   await deleteCaisseAndJournalMirror(id);
+
+  if (wasTransfertBanque) {
+    await deleteMatchingRemiseEnBanque({ montant, date });
+  }
 
   await logAudit({
     userId: guard.id,

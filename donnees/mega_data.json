@@ -50,6 +50,12 @@
    "sens": "entree"
   },
   {
+   "categorie": "Remise en banque (depuis caisse)",
+   "code": "585",
+   "intitule": "Virements de fonds (mouvement interne)",
+   "sens": "entree"
+  },
+  {
    "categorie": "Autres recettes",
    "code": "758",
    "intitule": "Produits divers",
@@ -147,6 +153,12 @@
   },
   {
    "categorie": "Transfert vers petite caisse",
+   "code": "585",
+   "intitule": "Virements de fonds (mouvement interne)",
+   "sens": "sortie"
+  },
+  {
+   "categorie": "Transfert vers banque",
    "code": "585",
    "intitule": "Virements de fonds (mouvement interne)",
    "sens": "sortie"

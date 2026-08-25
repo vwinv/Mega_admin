@@ -1,5 +1,7 @@
 import {
   APPROVISIONNEMENT_CAISSE,
+  REMISE_EN_BANQUE,
+  TRANSFERT_VERS_BANQUE,
   TRANSFERT_VERS_CAISSE,
 } from "@/lib/constants";
 
@@ -56,7 +58,9 @@ export function validateOperation(
 
   const isTransfertInterne =
     input.categorieNom === TRANSFERT_VERS_CAISSE ||
-    input.categorieNom === APPROVISIONNEMENT_CAISSE;
+    input.categorieNom === APPROVISIONNEMENT_CAISSE ||
+    input.categorieNom === TRANSFERT_VERS_BANQUE ||
+    input.categorieNom === REMISE_EN_BANQUE;
 
   if (
     input.montantType === "sortie" &&

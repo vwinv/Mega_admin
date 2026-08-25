@@ -19,6 +19,8 @@ import {
 } from "@/lib/cash-sync";
 import {
   ensureApprovisionnementCaisse,
+  ensureRemiseEnBanque,
+  isTransfertVersBanque,
   isTransfertVersCaisse,
 } from "@/lib/transfert-caisse";
 
@@ -206,7 +208,16 @@ export async function approveOperation(
       return { ok: false, error: "Demande introuvable ou déjà traitée." };
     }
     await prisma.operationCaisse.update({ where: { id }, data });
-    if (op.operationId) {
+    if (await isTransfertVersBanque(op.categorieId)) {
+      if ((op.sortie ?? 0) > 0) {
+        await ensureRemiseEnBanque({
+          montant: op.sortie!,
+          date: op.date,
+          codeBudgetaireId: op.codeBudgetaireId,
+          libelleCaisse: op.libelle,
+        });
+      }
+    } else if (op.operationId) {
       await prisma.operation.update({ where: { id: op.operationId }, data });
     } else {
       await ensureJournalMirrorFromCaisse(id);

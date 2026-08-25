@@ -1,6 +1,7 @@
 import { cache } from "react";
 import { prisma } from "@/lib/prisma";
 import { OperationRow } from "@/lib/types";
+import { ensureTransfertCategories } from "@/lib/transfert-caisse";
 
 function serializeOp(
   op: {
@@ -52,6 +53,7 @@ function serializeOp(
 }
 
 export const getReferenceData = cache(async () => {
+  await ensureTransfertCategories();
   const [categories, codesBudgetaires, params] = await Promise.all([
     prisma.categorie.findMany({
       orderBy: [{ sens: "asc" }, { nom: "asc" }],

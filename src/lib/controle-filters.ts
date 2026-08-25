@@ -1,4 +1,4 @@
-import { TRANSFERT_VERS_CAISSE, APPROVISIONNEMENT_CAISSE, isMouvementInterne } from "@/lib/constants";
+import { TRANSFERT_VERS_CAISSE, TRANSFERT_VERS_BANQUE, APPROVISIONNEMENT_CAISSE, REMISE_EN_BANQUE, isMouvementInterne } from "@/lib/constants";
 import type { OperationRow } from "@/lib/types";
 
 export function matchesJournalControleFilter(
@@ -20,6 +20,8 @@ export function matchesJournalControleFilter(
       return (op.entree ?? 0) > 0 && (op.sortie ?? 0) > 0;
     case "transfert-caisse":
       return op.categorieNom === TRANSFERT_VERS_CAISSE;
+    case "remise-banque":
+      return op.categorieNom === REMISE_EN_BANQUE;
     case "doublon":
       return true;
     default:
@@ -46,6 +48,8 @@ export function matchesCaisseControleFilter(
       return (op.entree ?? 0) > 0 && (op.sortie ?? 0) > 0;
     case "appro-caisse":
       return op.categorieNom === APPROVISIONNEMENT_CAISSE;
+    case "transfert-banque":
+      return op.categorieNom === TRANSFERT_VERS_BANQUE;
     case "doublon":
       return true;
     default:

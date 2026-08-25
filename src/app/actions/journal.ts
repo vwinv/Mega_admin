@@ -19,7 +19,7 @@ import {
   ensureCaisseMirrorFromJournal,
   isCashMode,
 } from "@/lib/cash-sync";
-import { ensureApprovisionnementCaisse } from "@/lib/transfert-caisse";
+import { ensureApprovisionnementCaisse, deleteMatchingApprovisionnementCaisse } from "@/lib/transfert-caisse";
 import { OperationInput, montantOperationInchange, validateOperation } from "@/lib/validation";
 
 function parseDate(value: string): Date | null {
@@ -236,10 +236,23 @@ export async function deleteOperation(
   const guard = await guardWrite();
   if (isGuardError(guard)) return guard;
 
-  const existing = await prisma.operation.findUnique({ where: { id } });
+  const existing = await prisma.operation.findUnique({
+    where: { id },
+    include: { categorie: true },
+  });
   if (!existing) return { ok: false, error: "Opération introuvable." };
 
   await prisma.operation.delete({ where: { id } });
+
+  if (
+    existing.categorie.nom === TRANSFERT_VERS_CAISSE &&
+    (existing.sortie ?? 0) > 0
+  ) {
+    await deleteMatchingApprovisionnementCaisse({
+      montant: existing.sortie!,
+      date: existing.date,
+    });
+  }
 
   await logAudit({
     userId: guard.id,

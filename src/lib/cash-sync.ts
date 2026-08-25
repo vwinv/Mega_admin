@@ -1,5 +1,4 @@
 import {
-  APPROVISIONNEMENT_CAISSE,
   TRANSFERT_VERS_CAISSE,
   isMouvementInterne,
 } from "@/lib/constants";
@@ -116,10 +115,15 @@ export async function ensureJournalMirrorFromCaisse(
   });
   if (!op) return;
 
-  if (
-    isMouvementInterne(op.categorie.nom, op.categorie.codeCompte) ||
-    op.categorie.nom === APPROVISIONNEMENT_CAISSE
-  ) {
+  if (isMouvementInterne(op.categorie.nom, op.categorie.codeCompte)) {
+    if (op.operationId) {
+      const journalId = op.operationId;
+      await prisma.operationCaisse.update({
+        where: { id: caisseId },
+        data: { operationId: null },
+      });
+      await prisma.operation.delete({ where: { id: journalId } });
+    }
     return;
   }
 

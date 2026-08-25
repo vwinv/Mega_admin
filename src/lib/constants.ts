@@ -30,13 +30,18 @@ export const MOIS_LABELS = [
 export const TRANSFERT_VERS_CAISSE = "Transfert vers petite caisse";
 export const APPROVISIONNEMENT_CAISSE =
   "Approvisionnement de caisse (depuis banque)";
+export const TRANSFERT_VERS_BANQUE = "Transfert vers banque";
+export const REMISE_EN_BANQUE = "Remise en banque (depuis caisse)";
 
 export const CODE_COMPTE_INTERNE = "585";
+export const INTITULE_COMPTE_INTERNE = "Virements de fonds (mouvement interne)";
 
 export function isMouvementInterne(categorieNom: string, codeCompte: string) {
   return (
     codeCompte === CODE_COMPTE_INTERNE ||
     categorieNom === TRANSFERT_VERS_CAISSE ||
-    categorieNom === APPROVISIONNEMENT_CAISSE
+    categorieNom === APPROVISIONNEMENT_CAISSE ||
+    categorieNom === TRANSFERT_VERS_BANQUE ||
+    categorieNom === REMISE_EN_BANQUE
   );
 }

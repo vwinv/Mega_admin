@@ -1,5 +1,7 @@
 import {
   APPROVISIONNEMENT_CAISSE,
+  REMISE_EN_BANQUE,
+  TRANSFERT_VERS_BANQUE,
   TRANSFERT_VERS_CAISSE,
   isMouvementInterne,
 } from "@/lib/constants";
@@ -249,7 +251,15 @@ export async function runControles(): Promise<Controle[]> {
   const approCaisse = caisse
     .filter((o) => o.categorie.nom === APPROVISIONNEMENT_CAISSE)
     .reduce((s, o) => s + (o.entree ?? 0), 0);
-  const ecartTransfert = transfertJournal - approCaisse;
+  const transfertCaisse = caisse
+    .filter((o) => o.categorie.nom === TRANSFERT_VERS_BANQUE)
+    .reduce((s, o) => s + (o.sortie ?? 0), 0);
+  const remiseBanque = journal
+    .filter((o) => o.categorie.nom === REMISE_EN_BANQUE)
+    .reduce((s, o) => s + (o.entree ?? 0), 0);
+  const ecartTransfert =
+    Math.abs(transfertJournal - approCaisse) +
+    Math.abs(transfertCaisse - remiseBanque);
   controles.push({
     id: 9,
     libelle: "Écart transferts banque ↔ caisse",
@@ -269,6 +279,14 @@ export async function runControles(): Promise<Controle[]> {
             {
               label: "Caisse · approvisionnements",
               href: "/caisse?controle=appro-caisse",
+            },
+            {
+              label: "Caisse · transferts vers banque",
+              href: "/caisse?controle=transfert-banque",
+            },
+            {
+              label: "Journal · remises en banque",
+              href: "/journal?controle=remise-banque",
             },
           ]
         : undefined,
