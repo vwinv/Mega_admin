@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import "docx-preview/dist/docx-preview.css";
 
 type DocxPageViewerProps = {
   url: string;
