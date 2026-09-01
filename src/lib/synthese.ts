@@ -1,4 +1,4 @@
-import { whereOperationApprouvee } from "@/lib/approbation";
+import { whereOperationApprouvee, whereOperationComptable } from "@/lib/approbation";
 import { whereJournalBanque } from "@/lib/cash-sync";
 import { prisma } from "@/lib/prisma";
 
@@ -13,7 +13,7 @@ export type LigneSynthese = {
 export async function getSyntheseComptable(): Promise<LigneSynthese[]> {
   const [journal, caisse] = await Promise.all([
     prisma.operation.findMany({
-      where: { ...whereOperationApprouvee, ...whereJournalBanque },
+      where: { ...whereOperationComptable, ...whereJournalBanque },
       include: { categorie: true },
     }),
     prisma.operationCaisse.findMany({

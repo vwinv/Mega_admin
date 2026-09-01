@@ -64,6 +64,7 @@ const financeNavGroups: { title: string; items: NavItem[] }[] = [
       { href: "/caisse", label: "Petite caisse", icon: Wallet },
       { href: "/clients", label: "Clients", icon: Users },
       { href: "/facturation", label: "Facturation", icon: FileText },
+      { href: "/facturation/recus", label: "Reçus", icon: Receipt },
       { href: "/archives", label: "Archives", icon: Archive },
     ],
   },
@@ -177,8 +178,12 @@ function NavContent({
                 const active =
                   item.href === "/finance" || item.href === "/signatures"
                     ? pathname === item.href
-                    : pathname === item.href ||
-                      pathname.startsWith(`${item.href}/`);
+                    : item.href === "/facturation"
+                      ? pathname === "/facturation" ||
+                        (pathname.startsWith("/facturation/") &&
+                          !pathname.startsWith("/facturation/recus"))
+                      : pathname === item.href ||
+                        pathname.startsWith(`${item.href}/`);
                 const pending = pendingHref === item.href;
                 const Icon = item.icon;
 

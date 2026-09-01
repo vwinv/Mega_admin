@@ -21,6 +21,7 @@ import { syncSignatureForFacture } from "@/lib/signatures";
 
 const PATHS = [
   "/facturation",
+  "/facturation/recus",
   "/clients",
   "/journal",
   "/caisse",
@@ -758,6 +759,7 @@ export async function enregistrerPaiementFacture(
         totauxApres.resteAPayer > 0
           ? `Paiement partiel (tranche ${trancheN}) · Facture ${facture.numero} · reste ${totauxApres.resteAPayer.toLocaleString("fr-FR")} FCFA`
           : `Paiement soldé (tranche ${trancheN}) · Facture ${facture.numero}`,
+      historique: false,
     },
   });
 
@@ -876,7 +878,267 @@ export async function getRecuPaiement(operationId: string) {
       resteAPayer: totaux.resteAPayer,
     },
     entreprise: params,
+    historique: op.historique,
   };
+}
+
+export type RecuListRow = {
+  id: string;
+  tranche: number;
+  totalTranches: number;
+  date: string;
+  montant: number;
+  numeroPiece: string | null;
+  modePaiement: string | null;
+  historique: boolean;
+  factureId: string;
+  factureNumero: string;
+  factureTitre: string | null;
+  clientNom: string;
+  factureStatut: string;
+};
+
+export async function listRecusPaiement(): Promise<RecuListRow[]> {
+  const rows = await prisma.operation.findMany({
+    where: {
+      factureId: { not: null },
+      entree: { gt: 0 },
+    },
+    include: {
+      facture: {
+        include: { client: true },
+      },
+    },
+    orderBy: [{ date: "desc" }, { createdAt: "desc" }],
+  });
+
+  const byFacture = new Map<string, typeof rows>();
+  for (const op of rows) {
+    if (!op.factureId) continue;
+    const list = byFacture.get(op.factureId) ?? [];
+    list.push(op);
+    byFacture.set(op.factureId, list);
+  }
+
+  const trancheMap = new Map<string, { tranche: number; total: number }>();
+  for (const ops of byFacture.values()) {
+    const sorted = [...ops].sort((a, b) => {
+      const da = (a.date ?? a.createdAt).getTime();
+      const db = (b.date ?? b.createdAt).getTime();
+      if (da !== db) return da - db;
+      return a.createdAt.getTime() - b.createdAt.getTime();
+    });
+    sorted.forEach((op, i) => {
+      trancheMap.set(op.id, { tranche: i + 1, total: sorted.length });
+    });
+  }
+
+  return rows.map((op) => {
+    const facture = op.facture!;
+    const t = trancheMap.get(op.id) ?? { tranche: 1, total: 1 };
+    return {
+      id: op.id,
+      tranche: t.tranche,
+      totalTranches: t.total,
+      date: (op.date ?? op.createdAt).toISOString(),
+      montant: op.entree ?? 0,
+      numeroPiece: op.numeroPiece,
+      modePaiement: op.modePaiement,
+      historique: op.historique,
+      factureId: facture.id,
+      factureNumero: facture.numero,
+      factureTitre: facture.titre,
+      clientNom: facture.client.nom,
+      factureStatut: facture.statut,
+    };
+  });
+}
+
+export type FactureRecuOption = {
+  id: string;
+  numero: string;
+  titre: string | null;
+  clientNom: string;
+  montantPaye: number;
+  totalGeneral: number;
+  resteAPayer: number;
+  nbRecus: number;
+};
+
+/** Factures éligibles pour créer un reçu (paiement antérieur). */
+export async function listFacturesPourRecu(): Promise<FactureRecuOption[]> {
+  const rows = await prisma.facture.findMany({
+    include: {
+      client: true,
+      lignes: true,
+      operations: {
+        where: { entree: { gt: 0 } },
+        select: { id: true, entree: true },
+      },
+    },
+    orderBy: { date: "desc" },
+  });
+
+  return rows.map((f) => {
+    const totaux = computeTotauxFacture(
+      f.lignes,
+      f.reliquat,
+      f.tauxTVA,
+      f.montantPaye,
+      f.remiseMontant,
+      f.remisePourcent
+    );
+    const totalRecus = f.operations.reduce((s, o) => s + (o.entree ?? 0), 0);
+    return {
+      id: f.id,
+      numero: f.numero,
+      titre: f.titre,
+      clientNom: f.client.nom,
+      montantPaye: f.montantPaye,
+      totalGeneral: totaux.totalGeneral,
+      resteAPayer: totaux.resteAPayer,
+      nbRecus: f.operations.length,
+    };
+  });
+}
+
+/**
+ * Reçu pour un paiement antérieur au site : document imprimable sans
+ * nouvelle écriture de trésorerie.
+ */
+export async function creerRecuHistorique(input: {
+  factureId: string;
+  montant: number;
+  datePaiement: string;
+  modePaiement?: string;
+  numeroPiece?: string;
+  observations?: string;
+  /** Met à jour montantPaye / statut facture (si pas encore synchronisé). */
+  ajusterMontantPaye?: boolean;
+}): Promise<
+  { ok: true; operationId: string } | { ok: false; error: string }
+> {
+  const guard = await guardWrite();
+  if (isGuardError(guard)) return guard;
+
+  const facture = await prisma.facture.findUnique({
+    where: { id: input.factureId },
+    include: { client: true, lignes: true },
+  });
+  if (!facture) return { ok: false, error: "Facture introuvable." };
+
+  const montant = Math.round(input.montant);
+  if (montant <= 0) return { ok: false, error: "Montant invalide." };
+
+  const totaux = computeTotauxFacture(
+    facture.lignes,
+    facture.reliquat,
+    facture.tauxTVA,
+    facture.montantPaye,
+    facture.remiseMontant,
+    facture.remisePourcent
+  );
+
+  const opsExistants = await prisma.operation.findMany({
+    where: { factureId: input.factureId, entree: { gt: 0 } },
+    select: { entree: true },
+  });
+  const totalRecus = opsExistants.reduce((s, o) => s + (o.entree ?? 0), 0);
+  const totalApres = totalRecus + montant;
+
+  if (totalApres > totaux.totalGeneral) {
+    return {
+      ok: false,
+      error: `Le total des reçus (${totalApres.toLocaleString("fr-FR")} FCFA) dépasserait le total de la facture (${totaux.totalGeneral.toLocaleString("fr-FR")} FCFA).`,
+    };
+  }
+
+  if (!input.ajusterMontantPaye && totalApres > facture.montantPaye) {
+    return {
+      ok: false,
+      error: `Ce reçu ferait ${totalApres.toLocaleString("fr-FR")} FCFA de reçus, mais la facture n'indique que ${facture.montantPaye.toLocaleString("fr-FR")} FCFA payés. Cochez « Mettre à jour le montant payé » ou ajustez la facture.`,
+    };
+  }
+
+  const catEntree = await prisma.categorie.findFirst({
+    where: { sens: "entree" },
+    orderBy: { nom: "asc" },
+  });
+  if (!catEntree) {
+    return {
+      ok: false,
+      error:
+        "Aucune catégorie d'entrée configurée. Créez-en une dans le plan comptable.",
+    };
+  }
+
+  const payDate = parseDate(input.datePaiement);
+  const trancheN =
+    (await prisma.operation.count({ where: { factureId: input.factureId } })) + 1;
+  const numeroPiece =
+    input.numeroPiece?.trim() ||
+    (await nextNumeroPieceBanque(prisma, payDate));
+
+  const op = await prisma.operation.create({
+    data: {
+      date: payDate,
+      libelle: `Facture ${facture.numero} · tranche ${trancheN} (antérieur) · ${facture.client.nom}`,
+      categorieId: catEntree.id,
+      entree: montant,
+      sortie: null,
+      numeroPiece,
+      modePaiement: input.modePaiement?.trim() || null,
+      factureId: input.factureId,
+      statutApprobation: "APPROUVE",
+      validePar: guard.nom,
+      historique: true,
+      observations:
+        input.observations?.trim() ||
+        "Paiement antérieur à la mise en service · reçu de régularisation (sans impact trésorerie)",
+    },
+  });
+
+  if (input.ajusterMontantPaye) {
+    const nouveauPaye = totalApres;
+    const totauxApres = computeTotauxFacture(
+      facture.lignes,
+      facture.reliquat,
+      facture.tauxTVA,
+      nouveauPaye,
+      facture.remiseMontant,
+      facture.remisePourcent
+    );
+    const statut =
+      totauxApres.resteAPayer === 0
+        ? "PAYE"
+        : nouveauPaye > 0
+          ? "PARTIEL"
+          : facture.statut;
+
+    await prisma.facture.update({
+      where: { id: input.factureId },
+      data: {
+        montantPaye: nouveauPaye,
+        datePaiement: payDate,
+        statut,
+        operationId: facture.operationId ?? op.id,
+      },
+    });
+  }
+
+  await logAudit({
+    userId: guard.id,
+    userNom: guard.nom,
+    action: "CREATE",
+    entity: "Operation",
+    entityId: op.id,
+    details: `Reçu antérieur · ${montant.toLocaleString("fr-FR")} FCFA · ${facture.numero}`,
+  });
+
+  revalidate();
+  revalidatePath(`/facturation/recus`);
+  revalidatePath(`/facturation/factures/${input.factureId}`);
+  return { ok: true, operationId: op.id };
 }
 
 export async function deleteDevis(

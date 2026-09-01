@@ -7,7 +7,7 @@ import {
 } from "@/lib/constants";
 import type { Controle, ControleSource } from "@/lib/controle-helpers";
 import { resolveStatutEcheance } from "@/lib/impots-statut";
-import { whereOperationApprouvee } from "@/lib/approbation";
+import { whereOperationApprouvee, whereOperationComptable } from "@/lib/approbation";
 import { prisma } from "@/lib/prisma";
 import { getSoldes } from "@/lib/tresorerie";
 
@@ -63,7 +63,7 @@ export async function runControles(): Promise<Controle[]> {
 
   const [journal, caisse, codes, echeances] = await Promise.all([
     prisma.operation.findMany({
-      where: whereOperationApprouvee,
+      where: whereOperationComptable,
       include: { categorie: true },
     }),
     prisma.operationCaisse.findMany({

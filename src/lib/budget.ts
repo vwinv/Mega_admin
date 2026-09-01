@@ -1,6 +1,6 @@
 import { isMouvementInterne } from "@/lib/constants";
 import { MOIS_LABELS } from "@/lib/constants";
-import { whereOperationApprouvee } from "@/lib/approbation";
+import { whereOperationApprouvee, whereOperationComptable } from "@/lib/approbation";
 import { whereJournalBanque } from "@/lib/cash-sync";
 import { prisma } from "@/lib/prisma";
 
@@ -16,7 +16,7 @@ export async function getBudgetData(annee: number) {
   const [journal, caisse] = await Promise.all([
     prisma.operation.findMany({
       // Cash comptabilisé via la petite caisse (évite double comptage)
-      where: { ...whereOperationApprouvee, ...whereJournalBanque },
+      where: { ...whereOperationComptable, ...whereJournalBanque },
       include: { categorie: true },
     }),
     prisma.operationCaisse.findMany({
@@ -76,7 +76,7 @@ export async function getDepenseParCodeBudgetaire() {
   const [journal, caisse] = await Promise.all([
     prisma.operation.findMany({
       where: {
-        ...whereOperationApprouvee,
+        ...whereOperationComptable,
         ...whereJournalBanque,
         codeBudgetaireId: { not: null },
       },

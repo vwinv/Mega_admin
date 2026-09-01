@@ -1,5 +1,5 @@
 import { MOIS_LABELS } from "@/lib/constants";
-import { whereOperationApprouvee } from "@/lib/approbation";
+import { whereOperationApprouvee, whereOperationComptable } from "@/lib/approbation";
 import { MODE_CASH, whereJournalBanque } from "@/lib/cash-sync";
 import { prisma } from "@/lib/prisma";
 
@@ -83,7 +83,7 @@ export async function getSoldes() {
 
   const date = plageExercice(params.annee);
   const whereExerciceBanque = {
-    ...whereOperationApprouvee,
+    ...whereOperationComptable,
     ...whereJournalBanque,
     date,
   };
@@ -164,7 +164,7 @@ export async function getTresorerieMensuelle() {
 
   const date = plageExercice(params.annee);
   const whereExerciceBanque = {
-    ...whereOperationApprouvee,
+    ...whereOperationComptable,
     ...whereJournalBanque,
     date,
   };
@@ -254,7 +254,7 @@ export async function getAnomaliesTresorerie(
   plafondCaisse: number
 ): Promise<AnomalieTresorerie[]> {
   const date = plageExercice(annee);
-  const whereExercice = { ...whereOperationApprouvee, date };
+  const whereExercice = { ...whereOperationComptable, date };
 
   const [journal, caisse] = await Promise.all([
     prisma.operation.findMany({

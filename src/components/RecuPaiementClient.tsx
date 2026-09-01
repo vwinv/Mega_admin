@@ -29,6 +29,7 @@ type RecuData = {
   modePaiement: string | null;
   libelle: string;
   validePar: string | null;
+  historique?: boolean;
   facture: {
     id: string;
     numero: string;
@@ -52,19 +53,26 @@ type RecuData = {
   } | null;
 };
 
-export function RecuPaiementClient({ recu }: { recu: RecuData }) {
+export function RecuPaiementClient({
+  recu,
+  backHref,
+}: {
+  recu: RecuData;
+  backHref?: string;
+}) {
   const email =
     recu.entreprise?.emailContact ?? "contact@mega-sn.com";
   const tel = recu.entreprise?.telephoneContact ?? "78 450 40 52";
+  const retour = backHref ?? `/facturation/factures/${recu.facture.id}`;
 
   return (
     <div className="space-y-4">
       <div className="no-print flex flex-wrap items-center justify-between gap-3">
         <Link
-          href={`/facturation/factures/${recu.facture.id}`}
+          href={retour}
           className="text-sm text-slate-600 hover:text-mega-700"
         >
-          ← Retour à la facture
+          ← Retour
         </Link>
         <Button variant="secondary" onClick={() => window.print()}>
           Imprimer le reçu
@@ -90,6 +98,12 @@ export function RecuPaiementClient({ recu }: { recu: RecuData }) {
         <h1 className="mb-1 text-xl font-bold" style={{ color: MEGA_BRAND }}>
           REÇU DE PAIEMENT
         </h1>
+        {recu.historique && (
+          <p className="mb-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+            Paiement antérieur à la mise en service · document de
+            régularisation (sans impact sur la trésorerie actuelle).
+          </p>
+        )}
         <p className="mb-6 text-sm text-slate-600">
           Tranche {recu.tranche}
           {recu.totalTranches > 1 ? ` / ${recu.totalTranches}` : ""} · Facture

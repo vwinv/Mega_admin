@@ -48,6 +48,15 @@ import {
 
 const FORM_ID = "journal-operation-form";
 
+function sortOperationsByDateDesc(ops: OperationRow[]): OperationRow[] {
+  return [...ops].sort((a, b) => {
+    const ta = a.date ? Date.parse(a.date) : 0;
+    const tb = b.date ? Date.parse(b.date) : 0;
+    if (tb !== ta) return tb - ta;
+    return b.id.localeCompare(a.id);
+  });
+}
+
 function PreviewField({
   label,
   children,
@@ -147,7 +156,8 @@ export function JournalClient({
       );
     }
 
-    return list.filter((op) => {
+    return sortOperationsByDateDesc(
+      list.filter((op) => {
       if (filtreMois && op.date) {
         const m = new Date(op.date).getUTCMonth() + 1;
         if (String(m) !== filtreMois) return false;
@@ -162,7 +172,8 @@ export function JournalClient({
       )
         return false;
       return true;
-    });
+    })
+    );
   }, [
     operations,
     controleFilter,

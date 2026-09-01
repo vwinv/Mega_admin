@@ -98,6 +98,9 @@ export function FacturationClient({
 
         {canEdit && (
           <div className="flex flex-wrap gap-2">
+            <Link href="/facturation/recus">
+              <Button variant="secondary">Reçus</Button>
+            </Link>
             <Link href="/facturation/devis/nouveau">
               <Button>+ Devis</Button>
             </Link>

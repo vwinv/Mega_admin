@@ -17,6 +17,12 @@ export const whereOperationApprouvee = {
   statutApprobation: "APPROUVE" as const,
 };
 
+/** Exclut les reçus « paiement antérieur » (document seul). */
+export const whereOperationComptable = {
+  ...whereOperationApprouvee,
+  historique: false as const,
+};
+
 export function needsCeoApproval(montant: number, seuil: number): boolean {
   return montant >= seuil && montant > 0;
 }

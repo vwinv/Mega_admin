@@ -189,6 +189,8 @@ model Operation {
   approuvePar      String?
   approuveAt       DateTime?
   motifRefus       String?
+  /** Reçu seul : n'impacte pas la trésorerie (paiement antérieur au site) */
+  historique       Boolean         @default(false)
   createdAt        DateTime        @default(now())
   updatedAt        DateTime        @updatedAt
   piecesComptables PieceComptable[]
@@ -201,6 +203,7 @@ model Operation {
   @@index([factureId])
   @@index([numeroPiece])
   @@index([modePaiement])
+  @@index([historique])
 }
 
 model OperationCaisse {

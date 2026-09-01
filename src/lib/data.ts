@@ -71,6 +71,7 @@ export const getReferenceData = cache(async () => {
 
 export async function getJournalOperations(): Promise<OperationRow[]> {
   const ops = await prisma.operation.findMany({
+    where: { historique: false },
     include: {
       categorie: true,
       codeBudgetaire: true,

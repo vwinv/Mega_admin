@@ -287,9 +287,7 @@ export function FactureDetailClient({
       return;
     }
     setShowPay(false);
-    router.push(
-      `/facturation/factures/${facture.id}/recu/${result.operationId}`
-    );
+    router.push(`/facturation/recus/${result.operationId}`);
   }
 
   async function handleDelete() {
@@ -332,6 +330,11 @@ export function FactureDetailClient({
                 month: "long",
                 year: "numeric",
               })}
+            </Link>
+          )}
+          {!isNew && (
+            <Link href="/facturation/recus">
+              <Button variant="secondary">Voir tous les reçus</Button>
             </Link>
           )}
           {!isNew && (
@@ -425,15 +428,23 @@ export function FactureDetailClient({
 
       {!isNew && paiements.length > 0 && (
         <Card className="no-print overflow-hidden !p-0">
-          <div className="border-b border-slate-100 px-4 py-3">
-            <h3 className="font-semibold text-slate-900">
-              Paiements par tranches
-            </h3>
-            <p className="text-xs text-slate-500">
-              {paiements.length} tranche{paiements.length > 1 ? "s" : ""} ·{" "}
-              {formatFcfaLabel(facture.montantPaye)} encaissés · reste{" "}
-              {formatFcfaLabel(totaux.resteAPayer)}
-            </p>
+          <div className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-100 px-4 py-3">
+            <div>
+              <h3 className="font-semibold text-slate-900">
+                Paiements par tranches
+              </h3>
+              <p className="text-xs text-slate-500">
+                {paiements.length} tranche{paiements.length > 1 ? "s" : ""} ·{" "}
+                {formatFcfaLabel(facture.montantPaye)} encaissés · reste{" "}
+                {formatFcfaLabel(totaux.resteAPayer)}
+              </p>
+            </div>
+            <Link
+              href="/facturation/recus"
+              className="text-sm font-medium text-mega-700 hover:underline"
+            >
+              Voir tous les reçus
+            </Link>
           </div>
           <div className="overflow-x-auto">
             <table className="data-table w-full text-sm">
@@ -459,7 +470,7 @@ export function FactureDetailClient({
                     <td>{p.modePaiement ?? "—"}</td>
                     <td>
                       <Link
-                        href={`/facturation/factures/${facture.id}/recu/${p.id}`}
+                        href={`/facturation/recus/${p.id}`}
                         className="text-sm font-medium text-mega-700 hover:underline"
                       >
                         Reçu
