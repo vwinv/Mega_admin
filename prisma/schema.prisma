@@ -311,6 +311,10 @@ model Facture {
   client        ClientFacturation @relation(fields: [clientId], references: [id])
   devisId       String?      @unique
   devis         Devis?       @relation(fields: [devisId], references: [id])
+  /** Facture précédente dont le reliquat est reporté (chaîne / dossier client) */
+  factureOrigineId String?
+  factureOrigine   Facture?  @relation("FactureSuite", fields: [factureOrigineId], references: [id], onDelete: SetNull)
+  facturesSuivantes Facture[] @relation("FactureSuite")
   statut        String       @default("BROUILLON")
   lignes        FactureLigne[]
   reliquat      Int          @default(0)
@@ -339,6 +343,7 @@ model Facture {
   @@index([date])
   @@index([statut])
   @@index([statutApprobation])
+  @@index([factureOrigineId])
 }
 
 model FactureLigne {

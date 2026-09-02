@@ -16,10 +16,13 @@ export const dynamic = "force-dynamic";
 
 export default async function FacturePage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ origine?: string }>;
 }) {
   const { id } = await params;
+  const { origine } = await searchParams;
   const session = await getSession();
   const clients = await listClients();
 
@@ -27,6 +30,8 @@ export default async function FacturePage({
     const today = new Date().toISOString().slice(0, 10);
     const paramsDb = await prisma.parametre.findFirst();
     const tauxDefaut = paramsDb?.tauxTVA ?? 0.18;
+    const factureOrigineData = origine ? await getFactureComplet(origine) : null;
+    const reliquatPrefill = factureOrigineData?.totaux.resteAPayer ?? 0;
     return (
       <div>
         <PageHeader title="Nouvelle facture" description="Création d'une facture client" />
@@ -35,16 +40,28 @@ export default async function FacturePage({
             titre: "",
             date: today,
             statut: "BROUILLON",
-            clientId: clients[0]?.id ?? "",
-            reliquat: 0,
-            reliquatLabel: "Reliquat",
+            clientId: factureOrigineData?.client.id ?? clients[0]?.id ?? "",
+            reliquat: reliquatPrefill,
+            reliquatLabel: factureOrigineData
+              ? `Reliquat facture ${factureOrigineData.numero}`
+              : "Reliquat",
             remiseMontant: 0,
             remisePourcent: 0,
             tauxTVA: 0,
             montantPaye: 0,
             statutApprobation: "APPROUVE",
+            factureOrigineId: factureOrigineData?.id ?? null,
+            factureOrigine: factureOrigineData
+              ? {
+                  id: factureOrigineData.id,
+                  numero: factureOrigineData.numero,
+                  titre: factureOrigineData.titre,
+                  resteAPayer: factureOrigineData.totaux.resteAPayer,
+                }
+              : null,
+            dossier: factureOrigineData?.dossier ?? [],
             lignes: [],
-            totaux: computeTotauxFacture([], 0, 0, 0),
+            totaux: computeTotauxFacture([], reliquatPrefill, 0, 0),
             entreprise: paramsDb
               ? {
                   entreprise: paramsDb.entreprise,
@@ -97,6 +114,9 @@ export default async function FacturePage({
           statutApprobation: facture.statutApprobation,
           motifRefus: facture.motifRefus,
           devis: facture.devis,
+          factureOrigineId: facture.factureOrigineId,
+          factureOrigine: facture.factureOrigine,
+          dossier: facture.dossier,
           lignes: facture.lignes,
           totaux: facture.totaux,
           entreprise: facture.entreprise,

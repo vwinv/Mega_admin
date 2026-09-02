@@ -78,6 +78,156 @@ export type FactureRow = {
   resteAPayer: number;
 };
 
+export type FactureOrigineOption = {
+  id: string;
+  numero: string;
+  titre: string | null;
+  date: string;
+  resteAPayer: number;
+  statut: string;
+};
+
+export type FactureDossierRow = {
+  id: string;
+  numero: string;
+  titre: string | null;
+  date: string;
+  statut: string;
+  totalGeneral: number;
+  montantPaye: number;
+  resteAPayer: number;
+  factureOrigineId: string | null;
+};
+
+function totauxFromFactureRecord(f: {
+  lignes: { prix: number }[];
+  reliquat: number;
+  tauxTVA: number;
+  montantPaye: number;
+  remiseMontant: number;
+  remisePourcent: number;
+}) {
+  return computeTotauxFacture(
+    f.lignes,
+    f.reliquat,
+    f.tauxTVA,
+    f.montantPaye,
+    f.remiseMontant,
+    f.remisePourcent
+  );
+}
+
+async function validateFactureOrigine(
+  factureId: string | undefined,
+  factureOrigineId: string | null,
+  clientId: string
+): Promise<string | null> {
+  if (!factureOrigineId) return null;
+  if (factureId && factureOrigineId === factureId) {
+    return "Une facture ne peut pas être sa propre origine.";
+  }
+  const origin = await prisma.facture.findUnique({
+    where: { id: factureOrigineId },
+    select: { id: true, clientId: true, factureOrigineId: true },
+  });
+  if (!origin) return "Facture d'origine introuvable.";
+  if (origin.clientId !== clientId) {
+    return "La facture d'origine doit être du même client.";
+  }
+  let cur: string | null = origin.factureOrigineId;
+  while (cur) {
+    if (factureId && cur === factureId) {
+      return "Lien circulaire entre factures interdit.";
+    }
+    const p = await prisma.facture.findUnique({
+      where: { id: cur },
+      select: { factureOrigineId: true },
+    });
+    cur = p?.factureOrigineId ?? null;
+  }
+  return null;
+}
+
+async function getFactureDossier(factureId: string): Promise<FactureDossierRow[]> {
+  const current = await prisma.facture.findUnique({
+    where: { id: factureId },
+    select: { id: true, factureOrigineId: true },
+  });
+  if (!current) return [];
+
+  let rootId = factureId;
+  let walkId: string | null = factureId;
+  while (walkId) {
+    const row: { id: string; factureOrigineId: string | null } | null =
+      await prisma.facture.findUnique({
+        where: { id: walkId },
+        select: { id: true, factureOrigineId: true },
+      });
+    if (!row) break;
+    rootId = row.id;
+    walkId = row.factureOrigineId;
+  }
+
+  const collected = new Map<string, FactureDossierRow>();
+
+  async function collectTree(id: string) {
+    const f = await prisma.facture.findUnique({
+      where: { id },
+      include: { lignes: { orderBy: { ordre: "asc" } } },
+    });
+    if (!f || collected.has(f.id)) return;
+    const totaux = totauxFromFactureRecord(f);
+    collected.set(f.id, {
+      id: f.id,
+      numero: f.numero,
+      titre: f.titre,
+      date: f.date.toISOString(),
+      statut: f.statut,
+      totalGeneral: totaux.totalGeneral,
+      montantPaye: f.montantPaye,
+      resteAPayer: totaux.resteAPayer,
+      factureOrigineId: f.factureOrigineId,
+    });
+    const children = await prisma.facture.findMany({
+      where: { factureOrigineId: id },
+      select: { id: true },
+      orderBy: [{ date: "asc" }, { numero: "asc" }],
+    });
+    for (const c of children) await collectTree(c.id);
+  }
+
+  await collectTree(rootId);
+  return [...collected.values()].sort(
+    (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
+  );
+}
+
+export async function listFacturesOriginePossibles(
+  clientId: string,
+  excludeFactureId?: string
+): Promise<FactureOrigineOption[]> {
+  if (!clientId) return [];
+  const rows = await prisma.facture.findMany({
+    where: {
+      clientId,
+      ...(excludeFactureId ? { id: { not: excludeFactureId } } : {}),
+    },
+    include: { lignes: true },
+    orderBy: [{ date: "desc" }, { numero: "desc" }],
+  });
+  return rows.map((f) => {
+    const totaux = totauxFromFactureRecord(f);
+    return {
+      id: f.id,
+      numero: f.numero,
+      titre: f.titre,
+      date: f.date.toISOString(),
+      resteAPayer: totaux.resteAPayer,
+      statut: f.statut,
+    };
+  });
+}
+
 function parseDate(value: string): Date {
   return new Date(`${value}T00:00:00.000Z`);
 }
@@ -311,6 +461,21 @@ export async function getFactureComplet(id: string) {
       client: true,
       lignes: { orderBy: { ordre: "asc" } },
       devis: { select: { numero: true, titre: true } },
+      factureOrigine: {
+        select: {
+          id: true,
+          numero: true,
+          titre: true,
+          date: true,
+          statut: true,
+          reliquat: true,
+          tauxTVA: true,
+          montantPaye: true,
+          remiseMontant: true,
+          remisePourcent: true,
+          lignes: true,
+        },
+      },
     },
   });
   if (!f) return null;
@@ -323,6 +488,15 @@ export async function getFactureComplet(id: string) {
     f.remiseMontant,
     f.remisePourcent
   );
+  const factureOrigine = f.factureOrigine
+    ? {
+        id: f.factureOrigine.id,
+        numero: f.factureOrigine.numero,
+        titre: f.factureOrigine.titre,
+        resteAPayer: totauxFromFactureRecord(f.factureOrigine).resteAPayer,
+      }
+    : null;
+  const dossier = await getFactureDossier(id);
   return {
     id: f.id,
     numero: f.numero,
@@ -344,6 +518,9 @@ export async function getFactureComplet(id: string) {
     approuvePar: f.approuvePar,
     approuveAt: f.approuveAt?.toISOString() ?? null,
     motifRefus: f.motifRefus,
+    factureOrigineId: f.factureOrigineId,
+    factureOrigine,
+    dossier,
     client: f.client,
     devis: f.devis,
     lignes: f.lignes.map((l) => ({
@@ -477,6 +654,7 @@ export async function saveFacture(
     remisePourcent?: number;
     tauxTVA?: number;
     notes?: string;
+    factureOrigineId?: string | null;
     lignes: LigneDoc[];
   }
 ): Promise<{ ok: true; id: string } | { ok: false; error: string }> {
@@ -503,6 +681,13 @@ export async function saveFacture(
       : Math.max(0, Math.round(input.remiseMontant ?? 0) || 0);
   const reliquat = Math.max(0, Math.round(input.reliquat ?? 0) || 0);
   const reliquatLabel = input.reliquatLabel?.trim() || "Reliquat";
+  const factureOrigineId = input.factureOrigineId?.trim() || null;
+  const origineErr = await validateFactureOrigine(
+    input.id,
+    factureOrigineId,
+    input.clientId
+  );
+  if (origineErr) return { ok: false, error: origineErr };
 
   const lignesData = input.lignes.map((l, i) => ({
     ordre: i,
@@ -539,6 +724,7 @@ export async function saveFacture(
         statut: statutFinal,
         reliquat,
         reliquatLabel,
+        factureOrigineId,
         remiseMontant,
         remisePourcent,
         notes: input.notes?.trim() || null,
@@ -571,6 +757,7 @@ export async function saveFacture(
       statut: statutFinal,
       reliquat,
       reliquatLabel,
+      factureOrigineId,
       remiseMontant,
       remisePourcent,
       notes: input.notes?.trim() || null,

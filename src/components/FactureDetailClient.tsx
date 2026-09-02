@@ -1,13 +1,16 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   deleteFacture,
   enregistrerPaiementFacture,
+  listFacturesOriginePossibles,
   saveFacture,
   type ClientRow,
+  type FactureDossierRow,
+  type FactureOrigineOption,
   type PaiementTrancheRow,
 } from "@/app/actions/facturation";
 import { FacturePrintView } from "@/components/FacturationPrint";
@@ -164,6 +167,14 @@ export function FactureDetailClient({
     statutApprobation: string;
     motifRefus?: string | null;
     devis?: { numero: string; titre: string } | null;
+    factureOrigineId?: string | null;
+    factureOrigine?: {
+      id: string;
+      numero: string;
+      titre: string | null;
+      resteAPayer: number;
+    } | null;
+    dossier?: FactureDossierRow[];
     lignes: LigneDoc[];
     totaux: ReturnType<typeof computeTotauxFacture>;
     entreprise: {
@@ -193,6 +204,12 @@ export function FactureDetailClient({
   const [reliquatLabel, setReliquatLabel] = useState(
     facture.reliquatLabel || "Reliquat"
   );
+  const [factureOrigineId, setFactureOrigineId] = useState(
+    facture.factureOrigineId ?? ""
+  );
+  const [origineOptions, setOrigineOptions] = useState<FactureOrigineOption[]>(
+    []
+  );
   const [remiseMode, setRemiseMode] = useState<"aucune" | "montant" | "pourcent">(
     (facture.remisePourcent ?? 0) > 0
       ? "pourcent"
@@ -219,6 +236,35 @@ export function FactureDetailClient({
   const [saving, setSaving] = useState(false);
   const [paying, setPaying] = useState(false);
   const [deleting, setDeleting] = useState(false);
+
+  useEffect(() => {
+    if (!clientId) {
+      setOrigineOptions([]);
+      return;
+    }
+    let cancelled = false;
+    listFacturesOriginePossibles(clientId, facture.id).then((rows) => {
+      if (!cancelled) setOrigineOptions(rows);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [clientId, facture.id]);
+
+  const origineSel =
+    origineOptions.find((o) => o.id === factureOrigineId) ??
+    (facture.factureOrigine?.id === factureOrigineId
+      ? {
+          id: facture.factureOrigine.id,
+          numero: facture.factureOrigine.numero,
+          titre: facture.factureOrigine.titre,
+          date: "",
+          resteAPayer: facture.factureOrigine.resteAPayer,
+          statut: "",
+        }
+      : undefined);
+
+  const dossier = facture.dossier ?? [];
 
   const clientNom =
     facture.clientNom ?? clients.find((c) => c.id === clientId)?.nom ?? "";
@@ -252,6 +298,7 @@ export function FactureDetailClient({
       notes,
       reliquat: rel,
       reliquatLabel,
+      factureOrigineId: factureOrigineId || null,
       remiseMontant: remiseMontantSave,
       remisePourcent: remisePourcentSave,
       tauxTVA,
@@ -335,6 +382,11 @@ export function FactureDetailClient({
           {!isNew && (
             <Link href="/facturation/recus">
               <Button variant="secondary">Voir tous les reçus</Button>
+            </Link>
+          )}
+          {!isNew && canEdit && !editMode && totaux.resteAPayer > 0 && (
+            <Link href={`/facturation/factures/nouveau?origine=${facture.id}`}>
+              <Button variant="secondary">Facture suite</Button>
             </Link>
           )}
           {!isNew && (
@@ -422,6 +474,95 @@ export function FactureDetailClient({
                 </p>
               </div>
             )}
+            {facture.factureOrigine && (
+              <div>
+                <p className="text-xs text-slate-500">Facture d&apos;origine</p>
+                <Link
+                  href={`/facturation/factures/${facture.factureOrigine.id}`}
+                  className="font-semibold text-mega-700 hover:underline"
+                >
+                  N°{facture.factureOrigine.numero}
+                  {facture.factureOrigine.titre
+                    ? ` · ${facture.factureOrigine.titre}`
+                    : ""}
+                </Link>
+              </div>
+            )}
+          </div>
+        </Card>
+      )}
+
+      {!isNew && dossier.length > 0 && (
+        <Card className="no-print overflow-hidden !p-0">
+          <div className="border-b border-slate-100 px-4 py-3">
+            <h3 className="font-semibold text-slate-900">Dossier factures liées</h3>
+            <p className="text-xs text-slate-500">
+              Chaîne de factures pour ce client (reliquats reportés)
+            </p>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="data-table w-full text-sm">
+              <thead>
+                <tr>
+                  <th>N°</th>
+                  <th>Date</th>
+                  <th>Statut</th>
+                  <th className="text-right">Total</th>
+                  <th className="text-right">Payé</th>
+                  <th className="text-right">Reste</th>
+                  <th />
+                </tr>
+              </thead>
+              <tbody>
+                {dossier.map((row) => {
+                  const isCurrent = row.id === facture.id;
+                  return (
+                    <tr
+                      key={row.id}
+                      className={isCurrent ? "bg-mega-50/60" : undefined}
+                    >
+                      <td className="font-mono font-medium">
+                        {row.numero}
+                        {isCurrent && (
+                          <span className="ml-2 text-xs font-normal text-mega-700">
+                            (courante)
+                          </span>
+                        )}
+                      </td>
+                      <td>
+                        {new Date(row.date).toLocaleDateString("fr-FR")}
+                      </td>
+                      <td>
+                        {STATUT_FACTURE_LABELS[row.statut] ?? row.statut}
+                      </td>
+                      <td className="text-right">
+                        {formatFcfaLabel(row.totalGeneral)}
+                      </td>
+                      <td className="text-right text-mega-700">
+                        {formatFcfaLabel(row.montantPaye)}
+                      </td>
+                      <td
+                        className={`text-right font-medium ${
+                          row.resteAPayer > 0 ? "text-amber-700" : "text-mega-700"
+                        }`}
+                      >
+                        {formatFcfaLabel(row.resteAPayer)}
+                      </td>
+                      <td className="text-right">
+                        {!isCurrent && (
+                          <Link
+                            href={`/facturation/factures/${row.id}`}
+                            className="text-mega-700 hover:underline"
+                          >
+                            Ouvrir
+                          </Link>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
         </Card>
       )}
@@ -485,6 +626,16 @@ export function FactureDetailClient({
       )}
 
       {error && <Alert type="error">{error}</Alert>}
+
+      {isNew && facture.factureOrigine && (
+        <Alert type="info">
+          Cette facture est créée en suite de{" "}
+          <strong>N°{facture.factureOrigine.numero}</strong>. Le reliquat a été
+          prérempli ({formatFcfaLabel(facture.factureOrigine.resteAPayer)}).
+          Enregistrez la facture puis enregistrez les paiements sur{" "}
+          <strong>cette facture</strong>.
+        </Alert>
+      )}
 
       {isNew && (
         <Alert type="info">
@@ -619,6 +770,48 @@ export function FactureDetailClient({
                 {formatFcfaLabel(totaux.totalHT)}
               </p>
             )}
+
+            <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-4">
+              <h3 className="font-semibold text-slate-900">Facture d&apos;origine</h3>
+              <p className="mt-1 text-sm text-slate-600">
+                Liez cette facture à une facture précédente pour tracer le dossier
+                client (reliquat reporté).
+              </p>
+              <div className="mt-4">
+                <Select
+                  label="Facture précédente (optionnel)"
+                  value={factureOrigineId}
+                  onChange={(e) => setFactureOrigineId(e.target.value)}
+                >
+                  <option value="">Aucune</option>
+                  {origineOptions.map((o) => (
+                    <option key={o.id} value={o.id}>
+                      {o.numero}
+                      {o.titre ? ` · ${o.titre}` : ""} · reste{" "}
+                      {formatFcfaLabel(o.resteAPayer)}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+              {origineSel && origineSel.resteAPayer > 0 && (
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  <p className="text-sm text-slate-600">
+                    Reste à payer sur {origineSel.numero} :{" "}
+                    <strong>{formatFcfaLabel(origineSel.resteAPayer)}</strong>
+                  </p>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={() => {
+                      setReliquat(String(origineSel.resteAPayer));
+                      setReliquatLabel(`Reliquat facture ${origineSel.numero}`);
+                    }}
+                  >
+                    Reporter comme reliquat
+                  </Button>
+                </div>
+              )}
+            </div>
 
             <div className="rounded-xl border border-amber-200 bg-amber-50/60 p-4">
               <h3 className="font-semibold text-slate-900">
