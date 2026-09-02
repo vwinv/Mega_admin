@@ -98,12 +98,6 @@ export function RecuPaiementClient({
         <h1 className="mb-1 text-xl font-bold" style={{ color: MEGA_BRAND }}>
           REÇU DE PAIEMENT
         </h1>
-        {recu.historique && (
-          <p className="mb-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
-            Paiement antérieur à la mise en service · document de
-            régularisation (sans impact sur la trésorerie actuelle).
-          </p>
-        )}
         <p className="mb-6 text-sm text-slate-600">
           Tranche {recu.tranche}
           {recu.totalTranches > 1 ? ` / ${recu.totalTranches}` : ""} · Facture
