@@ -2,7 +2,7 @@
 
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
-import { changePassword } from "@/app/actions/auth";
+import { changePassword, updateOwnProfile } from "@/app/actions/auth";
 import { deleteUserSignature, saveUserSignature } from "@/app/actions/signatures";
 import { SignatureCaptureModal } from "@/components/SignatureCaptureModal";
 import { usePermissions } from "@/components/PermissionsProvider";
@@ -20,6 +20,12 @@ export function ProfilClient({
 }) {
   const router = useRouter();
   const { user } = usePermissions();
+  const [nom, setNom] = useState(user?.nom ?? "");
+  const [identifiant, setIdentifiant] = useState(user?.identifiant ?? "");
+  const [email, setEmail] = useState(user?.email ?? "");
+  const [profileError, setProfileError] = useState<string | null>(null);
+  const [profileSuccess, setProfileSuccess] = useState(false);
+  const [profileLoading, setProfileLoading] = useState(false);
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -34,6 +40,21 @@ export function ProfilClient({
   if (!user) return null;
 
   const canEditSignature = canWrite(user.role);
+
+  async function handleProfileSubmit(e: FormEvent) {
+    e.preventDefault();
+    setProfileError(null);
+    setProfileSuccess(false);
+    setProfileLoading(true);
+    const result = await updateOwnProfile({ nom, identifiant, email });
+    setProfileLoading(false);
+    if (!result.ok) {
+      setProfileError(result.error);
+      return;
+    }
+    setProfileSuccess(true);
+    router.refresh();
+  }
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -84,30 +105,50 @@ export function ProfilClient({
       <div className="grid gap-6 lg:grid-cols-2">
         <Card className="p-6">
           <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
-            Compte
+            Modifier mon compte
           </h2>
-          <dl className="mt-4 space-y-3 text-sm">
-            <div>
-              <dt className="text-slate-500">Nom</dt>
-              <dd className="font-medium text-slate-900">{user.nom}</dd>
-            </div>
-            <div>
-              <dt className="text-slate-500">Identifiant</dt>
-              <dd className="font-mono text-slate-900">{user.identifiant}</dd>
-            </div>
-            <div>
-              <dt className="text-slate-500">Profil</dt>
-              <dd className="font-medium text-mega-700">
-                {ROLE_LABELS[user.role]}
-              </dd>
-            </div>
-            {user.email && (
-              <div>
-                <dt className="text-slate-500">E-mail</dt>
-                <dd className="text-slate-900">{user.email}</dd>
-              </div>
+          <p className="mt-2 text-sm text-slate-600">
+            Le rôle ({ROLE_LABELS[user.role]}) ne peut être modifié que par un
+            administrateur.
+          </p>
+          <form onSubmit={handleProfileSubmit} className="mt-4 space-y-4">
+            {profileError && <Alert type="error">{profileError}</Alert>}
+            {profileSuccess && (
+              <Alert type="success">Compte mis à jour.</Alert>
             )}
-          </dl>
+            <Input
+              label="Nom complet"
+              value={nom}
+              onChange={(e) => setNom(e.target.value)}
+              required
+              autoComplete="name"
+            />
+            <Input
+              label="Identifiant"
+              value={identifiant}
+              onChange={(e) => setIdentifiant(e.target.value)}
+              required
+              minLength={3}
+              autoComplete="username"
+            />
+            <Input
+              label="E-mail"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              autoComplete="email"
+            />
+            {usesGoogle && (
+              <p className="text-xs text-slate-500">
+                Si vous changez l&apos;e-mail, utilisez ensuite le même compte
+                Google pour vous connecter.
+              </p>
+            )}
+            <Button type="submit" disabled={profileLoading}>
+              {profileLoading ? "Enregistrement…" : "Enregistrer"}
+            </Button>
+          </form>
         </Card>
 
         <Card className="p-6">

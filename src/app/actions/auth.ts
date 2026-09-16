@@ -148,3 +148,73 @@ export async function changePassword(
   revalidatePath("/profil");
   return { ok: true };
 }
+
+export async function updateOwnProfile(input: {
+  nom: string;
+  identifiant: string;
+  email: string;
+}): Promise<{ ok: true } | { ok: false; error: string }> {
+  const session = await requireAuth();
+
+  const nom = input.nom.trim();
+  const identifiant = input.identifiant.trim().toLowerCase();
+  const email = input.email.trim().toLowerCase();
+
+  if (!nom) return { ok: false, error: "Le nom est obligatoire." };
+  if (!identifiant || identifiant.length < 3) {
+    return {
+      ok: false,
+      error: "L'identifiant doit contenir au moins 3 caractères.",
+    };
+  }
+  if (!/^[a-z0-9._-]+$/.test(identifiant)) {
+    return {
+      ok: false,
+      error:
+        "L'identifiant ne peut contenir que des lettres, chiffres, points, tirets et underscores.",
+    };
+  }
+  if (!email || !email.includes("@")) {
+    return { ok: false, error: "Saisissez une adresse e-mail valide." };
+  }
+
+  const existingIdentifiant = await prisma.user.findFirst({
+    where: { identifiant, NOT: { id: session.id } },
+  });
+  if (existingIdentifiant) {
+    return { ok: false, error: "Cet identifiant est déjà utilisé." };
+  }
+
+  const existingEmail = await prisma.user.findFirst({
+    where: { email, NOT: { id: session.id } },
+  });
+  if (existingEmail) {
+    return { ok: false, error: "Cet e-mail est déjà utilisé par un autre compte." };
+  }
+
+  const updated = await prisma.user.update({
+    where: { id: session.id },
+    data: { nom, identifiant, email },
+  });
+
+  await createSession({
+    id: updated.id,
+    identifiant: updated.identifiant,
+    nom: updated.nom,
+    role: updated.role,
+    email: updated.email,
+  });
+
+  await logAudit({
+    userId: session.id,
+    userNom: updated.nom,
+    action: "UPDATE",
+    entity: "User",
+    entityId: session.id,
+    details: "Modification du profil",
+  });
+
+  revalidatePath("/profil");
+  revalidatePath("/");
+  return { ok: true };
+}
