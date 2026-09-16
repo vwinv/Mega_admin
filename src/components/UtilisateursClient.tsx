@@ -1,11 +1,12 @@
 "use client";
 
-import { Mail, Pencil, Plus, Trash2 } from "lucide-react";
+import { Mail, Pencil, Plus, Trash2, UserCheck, UserX } from "lucide-react";
 import { FormEvent, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   createUser,
   deleteUser,
+  setUserActif,
   unlinkGoogleAccount,
   updateUser,
   type UserRow,
@@ -70,6 +71,9 @@ export function UtilisateursClient({
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [filterRole, setFilterRole] = useState<Role | "ALL">("ALL");
+  const [filterStatut, setFilterStatut] = useState<"ALL" | "ACTIF" | "INACTIF">(
+    "ALL"
+  );
 
   const [identifiant, setIdentifiant] = useState("");
   const [nom, setNom] = useState("");
@@ -79,9 +83,16 @@ export function UtilisateursClient({
   const [actif, setActif] = useState(true);
 
   const filteredUsers = useMemo(() => {
-    if (filterRole === "ALL") return users;
-    return users.filter((u) => u.role === filterRole);
-  }, [users, filterRole]);
+    return users.filter((u) => {
+      if (filterRole !== "ALL" && u.role !== filterRole) return false;
+      if (filterStatut === "ACTIF" && !u.actif) return false;
+      if (filterStatut === "INACTIF" && u.actif) return false;
+      return true;
+    });
+  }, [users, filterRole, filterStatut]);
+
+  const actifsCount = users.filter((u) => u.actif).length;
+  const inactifsCount = users.length - actifsCount;
 
   function openCreate() {
     setIdentifiant("");
@@ -166,11 +177,25 @@ export function UtilisateursClient({
     router.refresh();
   }
 
+  async function handleToggleActif(user: UserRow) {
+    const next = !user.actif;
+    const msg = next
+      ? `Réactiver le compte « ${user.nom} » ? Cette personne pourra de nouveau se connecter.`
+      : `Désactiver le compte « ${user.nom} » ? Cette personne ne pourra plus se connecter.`;
+    if (!confirm(msg)) return;
+    const result = await setUserActif(user.id, next);
+    if (!result.ok) {
+      alert(result.error);
+      return;
+    }
+    router.refresh();
+  }
+
   return (
     <div>
       <PageHeader
         title="Comptes & accès"
-        description="Créez les comptes e-mail, attribuez les profils (priorités) et gérez la connexion Google"
+        description="Tous les comptes de la plateforme · désactivez, réactivez ou gérez les accès"
       >
         <Button onClick={openCreate}>
           <Plus className="mr-1.5 h-4 w-4" />
@@ -179,36 +204,65 @@ export function UtilisateursClient({
       </PageHeader>
 
       <Card className="mb-6 !p-4">
-        <div className="flex flex-wrap items-center gap-3">
-          <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-            Filtrer par profil
-          </span>
-          <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={() => setFilterRole("ALL")}
-              className={`rounded-lg px-3 py-1.5 text-xs font-medium ${
-                filterRole === "ALL"
-                  ? "bg-mega-600 text-white"
-                  : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-              }`}
-            >
-              Tous ({users.length})
-            </button>
-            {ROLES.map((r) => (
+        <div className="flex flex-col gap-4">
+          <div className="flex flex-wrap items-center gap-3">
+            <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+              Filtrer par profil
+            </span>
+            <div className="flex flex-wrap gap-2">
               <button
-                key={r}
                 type="button"
-                onClick={() => setFilterRole(r)}
+                onClick={() => setFilterRole("ALL")}
                 className={`rounded-lg px-3 py-1.5 text-xs font-medium ${
-                  filterRole === r
+                  filterRole === "ALL"
                     ? "bg-mega-600 text-white"
                     : "bg-slate-100 text-slate-600 hover:bg-slate-200"
                 }`}
               >
-                {ROLE_LABELS[r]} ({users.filter((u) => u.role === r).length})
+                Tous ({users.length})
               </button>
-            ))}
+              {ROLES.map((r) => (
+                <button
+                  key={r}
+                  type="button"
+                  onClick={() => setFilterRole(r)}
+                  className={`rounded-lg px-3 py-1.5 text-xs font-medium ${
+                    filterRole === r
+                      ? "bg-mega-600 text-white"
+                      : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                  }`}
+                >
+                  {ROLE_LABELS[r]} ({users.filter((u) => u.role === r).length})
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="flex flex-wrap items-center gap-3">
+            <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+              Statut
+            </span>
+            <div className="flex flex-wrap gap-2">
+              {(
+                [
+                  ["ALL", `Tous (${users.length})`],
+                  ["ACTIF", `Actifs (${actifsCount})`],
+                  ["INACTIF", `Inactifs (${inactifsCount})`],
+                ] as const
+              ).map(([id, label]) => (
+                <button
+                  key={id}
+                  type="button"
+                  onClick={() => setFilterStatut(id)}
+                  className={`rounded-lg px-3 py-1.5 text-xs font-medium ${
+                    filterStatut === id
+                      ? "bg-mega-600 text-white"
+                      : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       </Card>
@@ -235,7 +289,10 @@ export function UtilisateursClient({
               </tr>
             ) : (
               filteredUsers.map((user) => (
-                <tr key={user.id}>
+                <tr
+                  key={user.id}
+                  className={user.actif ? undefined : "bg-slate-50/80 opacity-70"}
+                >
                   <td>
                     <div className="flex items-center gap-2">
                       <Mail className="h-3.5 w-3.5 shrink-0 text-slate-400" />
@@ -264,12 +321,37 @@ export function UtilisateursClient({
                   </td>
                   <td>
                     {user.actif ? (
-                      <span className="text-mega-600">Actif</span>
+                      <span className="inline-flex rounded-full bg-mega-50 px-2 py-0.5 text-xs font-medium text-mega-700">
+                        Actif
+                      </span>
                     ) : (
-                      <span className="text-slate-400">Inactif</span>
+                      <span className="inline-flex rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-500">
+                        Inactif
+                      </span>
                     )}
                   </td>
                   <td className="text-right whitespace-nowrap">
+                    {user.id !== currentUserId && (
+                      <Button
+                        variant="ghost"
+                        className={`px-2 py-1 text-xs ${
+                          user.actif ? "text-amber-700" : "text-mega-700"
+                        }`}
+                        onClick={() => handleToggleActif(user)}
+                      >
+                        {user.actif ? (
+                          <>
+                            <UserX className="mr-1 h-3.5 w-3.5" />
+                            Désactiver
+                          </>
+                        ) : (
+                          <>
+                            <UserCheck className="mr-1 h-3.5 w-3.5" />
+                            Réactiver
+                          </>
+                        )}
+                      </Button>
+                    )}
                     <Button
                       variant="ghost"
                       className="px-2 py-1 text-xs"

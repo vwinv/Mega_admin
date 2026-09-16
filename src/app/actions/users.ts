@@ -164,6 +164,21 @@ export async function updateUser(
   if (target.id === guard.id && !input.actif) {
     return { ok: false, error: "Vous ne pouvez pas désactiver votre propre compte." };
   }
+  if (
+    !input.actif &&
+    target.actif &&
+    target.role === "ADMIN"
+  ) {
+    const adminCount = await prisma.user.count({
+      where: { role: "ADMIN", actif: true },
+    });
+    if (adminCount <= 1) {
+      return {
+        ok: false,
+        error: "Impossible de désactiver le dernier administrateur actif.",
+      };
+    }
+  }
   if (target.id === guard.id && input.role !== "ADMIN") {
     return {
       ok: false,
@@ -191,6 +206,54 @@ export async function updateUser(
     entity: "User",
     entityId: id,
     details: input.nom.trim(),
+  });
+
+  revalidatePath("/utilisateurs");
+  return { ok: true };
+}
+
+export async function setUserActif(
+  id: string,
+  actif: boolean
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const guard = await guardManageUsers();
+  if (isGuardError(guard)) return guard;
+
+  const target = await prisma.user.findUnique({ where: { id } });
+  if (!target) return { ok: false, error: "Utilisateur introuvable." };
+
+  if (target.id === guard.id && !actif) {
+    return { ok: false, error: "Vous ne pouvez pas désactiver votre propre compte." };
+  }
+
+  if (!actif && target.role === "ADMIN" && target.actif) {
+    const adminCount = await prisma.user.count({
+      where: { role: "ADMIN", actif: true },
+    });
+    if (adminCount <= 1) {
+      return {
+        ok: false,
+        error: "Impossible de désactiver le dernier administrateur actif.",
+      };
+    }
+  }
+
+  if (target.actif === actif) return { ok: true };
+
+  await prisma.user.update({
+    where: { id },
+    data: { actif },
+  });
+
+  await logAudit({
+    userId: guard.id,
+    userNom: guard.nom,
+    action: "UPDATE",
+    entity: "User",
+    entityId: id,
+    details: actif
+      ? `Réactivation · ${target.identifiant}`
+      : `Désactivation · ${target.identifiant}`,
   });
 
   revalidatePath("/utilisateurs");

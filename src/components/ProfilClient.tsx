@@ -58,6 +58,7 @@ export function ProfilClient({
     setCurrentPassword("");
     setNewPassword("");
     setConfirmPassword("");
+    router.refresh();
   }
 
   async function handleDeleteSignature() {
@@ -111,20 +112,21 @@ export function ProfilClient({
 
         <Card className="p-6">
           <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
-            {hasPassword ? "Changer le mot de passe" : "Sécurité"}
+            {hasPassword ? "Changer le mot de passe" : "Définir un mot de passe"}
           </h2>
-          {!hasPassword ? (
-            <p className="mt-4 text-sm text-slate-600">
-              {usesGoogle
-                ? "Vous vous connectez avec Google. La gestion du mot de passe se fait depuis votre compte Google."
-                : "Aucun mot de passe défini pour ce compte."}
-            </p>
-          ) : (
-            <form onSubmit={handleSubmit} className="mt-4 space-y-4">
-              {error && <Alert type="error">{error}</Alert>}
-              {success && (
-                <Alert type="success">Mot de passe mis à jour avec succès.</Alert>
-              )}
+          <p className="mt-2 text-sm text-slate-600">
+            {hasPassword
+              ? "Saisissez votre mot de passe actuel, puis le nouveau (8 caractères minimum)."
+              : usesGoogle
+                ? "Votre compte utilise Google. Vous pouvez aussi définir un mot de passe pour vous connecter sans Google."
+                : "Aucun mot de passe n'est encore défini. Choisissez-en un pour vous connecter."}
+          </p>
+          <form onSubmit={handleSubmit} className="mt-4 space-y-4">
+            {error && <Alert type="error">{error}</Alert>}
+            {success && (
+              <Alert type="success">Mot de passe mis à jour avec succès.</Alert>
+            )}
+            {hasPassword && (
               <Input
                 label="Mot de passe actuel"
                 type="password"
@@ -133,29 +135,33 @@ export function ProfilClient({
                 required
                 autoComplete="current-password"
               />
-              <Input
-                label="Nouveau mot de passe"
-                type="password"
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                required
-                minLength={8}
-                autoComplete="new-password"
-              />
-              <Input
-                label="Confirmer le nouveau mot de passe"
-                type="password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                required
-                minLength={8}
-                autoComplete="new-password"
-              />
-              <Button type="submit" disabled={loading}>
-                {loading ? "Enregistrement…" : "Mettre à jour"}
-              </Button>
-            </form>
-          )}
+            )}
+            <Input
+              label="Nouveau mot de passe"
+              type="password"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              required
+              minLength={8}
+              autoComplete="new-password"
+            />
+            <Input
+              label="Confirmer le nouveau mot de passe"
+              type="password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              required
+              minLength={8}
+              autoComplete="new-password"
+            />
+            <Button type="submit" disabled={loading}>
+              {loading
+                ? "Enregistrement…"
+                : hasPassword
+                  ? "Mettre à jour"
+                  : "Enregistrer le mot de passe"}
+            </Button>
+          </form>
         </Card>
 
         {canEditSignature && (

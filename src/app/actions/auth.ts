@@ -119,21 +119,30 @@ export async function changePassword(
   const user = await prisma.user.findUnique({ where: { id: session.id } });
   if (!user) return { ok: false, error: "Utilisateur introuvable." };
 
-  if (!user.passwordHash) {
-    return {
-      ok: false,
-      error: "Ce compte est connecté via Google. Le mot de passe ne peut pas être modifié ici.",
-    };
-  }
-
-  const valid = await verifyPassword(currentPassword, user.passwordHash);
-  if (!valid) {
-    return { ok: false, error: "Mot de passe actuel incorrect." };
+  if (user.passwordHash) {
+    if (!currentPassword) {
+      return { ok: false, error: "Saisissez votre mot de passe actuel." };
+    }
+    const valid = await verifyPassword(currentPassword, user.passwordHash);
+    if (!valid) {
+      return { ok: false, error: "Mot de passe actuel incorrect." };
+    }
   }
 
   await prisma.user.update({
     where: { id: session.id },
     data: { passwordHash: await hashPassword(newPassword) },
+  });
+
+  await logAudit({
+    userId: session.id,
+    userNom: session.nom,
+    action: "UPDATE",
+    entity: "User",
+    entityId: session.id,
+    details: user.passwordHash
+      ? "Changement de mot de passe"
+      : "Définition d'un mot de passe",
   });
 
   revalidatePath("/profil");
