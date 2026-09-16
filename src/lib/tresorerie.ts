@@ -254,11 +254,12 @@ export async function getAnomaliesTresorerie(
   plafondCaisse: number
 ): Promise<AnomalieTresorerie[]> {
   const date = plageExercice(annee);
-  const whereExercice = { ...whereOperationComptable, date };
+  const whereExerciceBanque = { ...whereOperationComptable, date };
+  const whereExerciceCaisse = { ...whereOperationApprouvee, date };
 
   const [journal, caisse] = await Promise.all([
     prisma.operation.findMany({
-      where: { ...whereExercice, ...whereJournalBanque },
+      where: { ...whereExerciceBanque, ...whereJournalBanque },
       select: {
         id: true,
         date: true,
@@ -270,7 +271,7 @@ export async function getAnomaliesTresorerie(
       },
     }),
     prisma.operationCaisse.findMany({
-      where: whereExercice,
+      where: whereExerciceCaisse,
       select: {
         id: true,
         date: true,
