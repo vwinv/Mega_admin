@@ -191,6 +191,10 @@ model Operation {
   motifRefus       String?
   /** Reçu seul : n'impacte pas la trésorerie (paiement antérieur au site) */
   historique       Boolean         @default(false)
+  /** Partie de la dette abandonnée / remise lors de ce paiement (hors trésorerie) */
+  montantRemis     Int             @default(0)
+  /** Libellé affiché sur le reçu pour la remise (ex. abandon de créance) */
+  remisMotif       String?
   createdAt        DateTime        @default(now())
   updatedAt        DateTime        @updatedAt
   piecesComptables PieceComptable[]

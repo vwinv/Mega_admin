@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   creerRecuHistorique,
+  supprimerPaiementFacture,
   type FactureRecuOption,
   type RecuListRow,
 } from "@/app/actions/facturation";
@@ -39,6 +40,7 @@ export function RecusClient({
   const [filtre, setFiltre] = useState("");
   const [factureId, setFactureId] = useState(factures[0]?.id ?? "");
   const [ajusterMontantPaye, setAjusterMontantPaye] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const factureSel = factures.find((f) => f.id === factureId);
 
@@ -53,6 +55,29 @@ export function RecusClient({
         (r.numeroPiece?.toLowerCase().includes(q) ?? false)
     );
   }, [recus, filtre]);
+
+  async function handleDelete(r: RecuListRow) {
+    const remisTxt =
+      r.montantRemis > 0
+        ? ` (dont remis ${formatFcfaLabel(r.montantRemis)})`
+        : "";
+    if (
+      !confirm(
+        `Supprimer le reçu ${r.factureNumero} · tranche ${r.tranche} · ${formatFcfaLabel(r.montant)}${remisTxt} ?`
+      )
+    ) {
+      return;
+    }
+    setDeletingId(r.id);
+    setError(null);
+    const result = await supprimerPaiementFacture(r.id);
+    setDeletingId(null);
+    if (!result.ok) {
+      setError(result.error);
+      return;
+    }
+    router.refresh();
+  }
 
   async function handleCreate(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -151,6 +176,11 @@ export function RecusClient({
                     </td>
                     <td className="px-4 py-3 text-right font-medium">
                       {formatFcfaLabel(r.montant)}
+                      {r.montantRemis > 0 && (
+                        <p className="text-xs font-normal text-amber-700">
+                          remis {formatFcfaLabel(r.montantRemis)}
+                        </p>
+                      )}
                     </td>
                     <td className="px-4 py-3">
                       {r.historique ? (
@@ -163,13 +193,23 @@ export function RecusClient({
                         </span>
                       )}
                     </td>
-                    <td className="px-4 py-3 text-right">
+                    <td className="px-4 py-3 text-right whitespace-nowrap">
                       <Link
                         href={`/facturation/recus/${r.id}`}
-                        className="text-mega-700 hover:underline"
+                        className="mr-3 text-mega-700 hover:underline"
                       >
                         Voir / imprimer
                       </Link>
+                      {canEdit && (
+                        <button
+                          type="button"
+                          className="text-red-600 hover:underline disabled:opacity-50"
+                          disabled={deletingId === r.id}
+                          onClick={() => handleDelete(r)}
+                        >
+                          {deletingId === r.id ? "…" : "Supprimer"}
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))

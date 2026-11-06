@@ -25,6 +25,8 @@ type RecuData = {
   totalTranches: number;
   date: string;
   montant: number;
+  montantRemis?: number;
+  remisMotif?: string | null;
   numeroPiece: string | null;
   modePaiement: string | null;
   libelle: string;
@@ -64,6 +66,9 @@ export function RecuPaiementClient({
     recu.entreprise?.emailContact ?? "contact@mega-sn.com";
   const tel = recu.entreprise?.telephoneContact ?? "78 450 40 52";
   const retour = backHref ?? `/facturation/factures/${recu.facture.id}`;
+  const montantRemis = recu.montantRemis ?? 0;
+  const remisMotif =
+    (recu.remisMotif ?? "").trim() || "Abandon de créance";
 
   return (
     <div className="space-y-4">
@@ -166,6 +171,16 @@ export function RecuPaiementClient({
                 {formatFcfa(recu.montant)}
               </td>
             </tr>
+            {montantRemis > 0 && (
+              <tr>
+                <td className="border border-slate-200 px-3 py-3">
+                  {remisMotif}
+                </td>
+                <td className="border border-slate-200 px-3 py-3 text-right font-semibold">
+                  {formatFcfa(montantRemis)}
+                </td>
+              </tr>
+            )}
             <tr style={{ backgroundColor: MEGA_BRAND, color: "white" }}>
               <td className="border border-white/30 px-3 py-2 font-semibold">
                 Montant reçu
@@ -174,6 +189,16 @@ export function RecuPaiementClient({
                 {formatFcfa(recu.montant)}
               </td>
             </tr>
+            {montantRemis > 0 && (
+              <tr>
+                <td className="border border-slate-200 px-3 py-2 font-semibold">
+                  Total appliqué à la facture (reçu + remis)
+                </td>
+                <td className="border border-slate-200 px-3 py-2 text-right font-semibold">
+                  {formatFcfa(recu.montant + montantRemis)}
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
 

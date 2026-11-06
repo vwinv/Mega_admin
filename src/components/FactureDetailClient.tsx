@@ -8,6 +8,7 @@ import {
   enregistrerPaiementFacture,
   listFacturesOriginePossibles,
   saveFacture,
+  supprimerPaiementFacture,
   type ClientRow,
   type FactureDossierRow,
   type FactureOrigineOption,
@@ -230,12 +231,17 @@ export function FactureDetailClient({
   );
   const [showPay, setShowPay] = useState(false);
   const [payMontant, setPayMontant] = useState("");
+  const [payRemis, setPayRemis] = useState("");
+  const [payRemisMotif, setPayRemisMotif] = useState("Abandon de créance");
   const [payDate, setPayDate] = useState(new Date().toISOString().slice(0, 10));
   const [payMode, setPayMode] = useState("");
   const [tauxTVA, setTauxTVA] = useState(facture.tauxTVA);
   const [saving, setSaving] = useState(false);
   const [paying, setPaying] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [deletingPaiementId, setDeletingPaiementId] = useState<string | null>(
+    null
+  );
 
   useEffect(() => {
     if (!clientId) {
@@ -322,11 +328,16 @@ export function FactureDetailClient({
     setError(null);
     setPaying(true);
     const montant = parseInt(payMontant, 10) || 0;
+    const montantRemis = parseInt(payRemis, 10) || 0;
     const result = await enregistrerPaiementFacture(
       facture.id,
       montant,
       payDate,
-      payMode || undefined
+      payMode || undefined,
+      {
+        montantRemis,
+        remisMotif: montantRemis > 0 ? payRemisMotif : undefined,
+      }
     );
     setPaying(false);
     if (!result.ok) {
@@ -334,7 +345,33 @@ export function FactureDetailClient({
       return;
     }
     setShowPay(false);
+    setPayMontant("");
+    setPayRemis("");
+    setPayRemisMotif("Abandon de créance");
     router.push(`/facturation/recus/${result.operationId}`);
+  }
+
+  async function handleDeletePaiement(p: PaiementTrancheRow) {
+    const remisTxt =
+      p.montantRemis > 0
+        ? ` (dont remis ${formatFcfaLabel(p.montantRemis)})`
+        : "";
+    if (
+      !confirm(
+        `Supprimer la tranche #${p.tranche} · ${formatFcfaLabel(p.montant)}${remisTxt} ?\n\nLe reçu et l'écriture de trésorerie associée seront annulés.`
+      )
+    ) {
+      return;
+    }
+    setError(null);
+    setDeletingPaiementId(p.id);
+    const result = await supprimerPaiementFacture(p.id);
+    setDeletingPaiementId(null);
+    if (!result.ok) {
+      setError(result.error);
+      return;
+    }
+    router.refresh();
   }
 
   async function handleDelete() {
@@ -593,7 +630,8 @@ export function FactureDetailClient({
                 <tr>
                   <th>Tranche</th>
                   <th>Date</th>
-                  <th>Montant</th>
+                  <th>Payé</th>
+                  <th>Remis</th>
                   <th>N° pièce</th>
                   <th>Mode</th>
                   <th />
@@ -607,15 +645,32 @@ export function FactureDetailClient({
                     <td className="font-semibold text-mega-700">
                       {formatFcfaLabel(p.montant)}
                     </td>
+                    <td className="text-amber-800">
+                      {p.montantRemis > 0
+                        ? formatFcfaLabel(p.montantRemis)
+                        : "—"}
+                    </td>
                     <td className="font-mono text-xs">{p.numeroPiece ?? "—"}</td>
                     <td>{p.modePaiement ?? "—"}</td>
-                    <td>
+                    <td className="whitespace-nowrap text-right">
                       <Link
                         href={`/facturation/recus/${p.id}`}
-                        className="text-sm font-medium text-mega-700 hover:underline"
+                        className="mr-3 text-sm font-medium text-mega-700 hover:underline"
                       >
                         Reçu
                       </Link>
+                      {canEdit && (
+                        <button
+                          type="button"
+                          className="text-sm font-medium text-red-600 hover:underline disabled:opacity-50"
+                          disabled={deletingPaiementId === p.id}
+                          onClick={() => handleDeletePaiement(p)}
+                        >
+                          {deletingPaiementId === p.id
+                            ? "Suppression…"
+                            : "Supprimer"}
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -961,14 +1016,39 @@ export function FactureDetailClient({
       >
         <form id="pay-form" onSubmit={handlePay} className="space-y-4">
           <Input
-            label="Montant de la tranche (FCFA)"
+            label="Montant encaissé (FCFA)"
             type="number"
-            min={1}
+            min={0}
             max={totaux.resteAPayer}
             value={payMontant}
             onChange={(e) => setPayMontant(e.target.value)}
             required
           />
+          <div className="rounded-xl border border-amber-200 bg-amber-50/70 p-3 space-y-3">
+            <p className="text-xs text-amber-900">
+              Si une partie de la dette est abandonnée (ex. dû 204&nbsp;000,
+              remis 100&nbsp;000, payé 104&nbsp;000), indiquez le montant remis
+              ici. Il apparaît sur le reçu et solde la facture,{" "}
+              <strong>sans</strong> créer d&apos;écriture de trésorerie.
+            </p>
+            <Input
+              label="Montant remis / abandonné (FCFA)"
+              type="number"
+              min={0}
+              max={totaux.resteAPayer}
+              value={payRemis}
+              onChange={(e) => setPayRemis(e.target.value)}
+              placeholder="0"
+            />
+            {(parseInt(payRemis, 10) || 0) > 0 && (
+              <Input
+                label="Libellé sur le reçu"
+                value={payRemisMotif}
+                onChange={(e) => setPayRemisMotif(e.target.value)}
+                placeholder="Abandon de créance"
+              />
+            )}
+          </div>
           <Input
             label="Date de paiement"
             type="date"
@@ -988,9 +1068,33 @@ export function FactureDetailClient({
               </option>
             ))}
           </Select>
+          {(parseInt(payMontant, 10) || 0) + (parseInt(payRemis, 10) || 0) >
+            0 && (
+            <p className="text-xs text-slate-600">
+              Total appliqué à la facture :{" "}
+              <strong>
+                {formatFcfaLabel(
+                  (parseInt(payMontant, 10) || 0) +
+                    (parseInt(payRemis, 10) || 0)
+                )}
+              </strong>
+              {" · "}
+              reste après :{" "}
+              <strong>
+                {formatFcfaLabel(
+                  Math.max(
+                    0,
+                    totaux.resteAPayer -
+                      ((parseInt(payMontant, 10) || 0) +
+                        (parseInt(payRemis, 10) || 0))
+                  )
+                )}
+              </strong>
+            </p>
+          )}
           <p className="text-xs text-slate-500">
-            Après validation, le reçu de paiement s&apos;ouvre. Une écriture
-            d&apos;entrée est créée au journal (n° BN-…).
+            Après validation, le reçu s&apos;ouvre. Seul le montant encaissé
+            crée une écriture au journal (n° BN-…).
           </p>
         </form>
       </Modal>

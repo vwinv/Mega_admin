@@ -862,7 +862,12 @@ export async function enregistrerPaiementFacture(
   factureId: string,
   montant: number,
   datePaiement?: string,
-  modePaiement?: string
+  modePaiement?: string,
+  options?: {
+    /** Abandon / remise sur cette tranche (réduit le reste sans écriture de trésorerie). */
+    montantRemis?: number;
+    remisMotif?: string;
+  }
 ): Promise<
   { ok: true; operationId: string } | { ok: false; error: string }
 > {
@@ -892,9 +897,20 @@ export async function enregistrerPaiementFacture(
     facture.remisePourcent
   );
 
-  if (montant <= 0) return { ok: false, error: "Montant invalide." };
-  if (montant > totaux.resteAPayer) {
-    return { ok: false, error: "Le montant dépasse le reste à payer." };
+  const montantEncaisse = Math.max(0, Math.round(montant) || 0);
+  const montantRemis = Math.max(0, Math.round(options?.montantRemis ?? 0) || 0);
+  const remisMotif =
+    options?.remisMotif?.trim() ||
+    (montantRemis > 0 ? "Abandon de créance" : null);
+
+  if (montantEncaisse <= 0 && montantRemis <= 0) {
+    return { ok: false, error: "Indiquez un montant payé et/ou un montant remis." };
+  }
+  if (montantEncaisse + montantRemis > totaux.resteAPayer) {
+    return {
+      ok: false,
+      error: `Payé (${montantEncaisse.toLocaleString("fr-FR")}) + remis (${montantRemis.toLocaleString("fr-FR")}) dépasse le reste à payer (${totaux.resteAPayer.toLocaleString("fr-FR")} FCFA).`,
+    };
   }
 
   const catEntree = await prisma.categorie.findFirst({
@@ -909,7 +925,8 @@ export async function enregistrerPaiementFacture(
     };
   }
 
-  const nouveauPaye = facture.montantPaye + montant;
+  // La remise solde aussi la facture, mais seule l'encaissement entre en trésorerie.
+  const nouveauPaye = facture.montantPaye + montantEncaisse + montantRemis;
   const totauxApres = computeTotauxFacture(
     facture.lignes,
     facture.reliquat,
@@ -928,29 +945,42 @@ export async function enregistrerPaiementFacture(
   const payDate = datePaiement ? parseDate(datePaiement) : new Date();
   const trancheN =
     (await prisma.operation.count({ where: { factureId } })) + 1;
-  const numeroPiece = await nextNumeroPieceBanque(prisma, payDate);
+  const numeroPiece =
+    montantEncaisse > 0 ? await nextNumeroPieceBanque(prisma, payDate) : null;
+
+  const obsParts = [
+    montantEncaisse > 0
+      ? totauxApres.resteAPayer > 0
+        ? `Paiement partiel (tranche ${trancheN}) · Facture ${facture.numero} · reste ${totauxApres.resteAPayer.toLocaleString("fr-FR")} FCFA`
+        : `Paiement soldé (tranche ${trancheN}) · Facture ${facture.numero}`
+      : `Régularisation (tranche ${trancheN}) · Facture ${facture.numero}`,
+  ];
+  if (montantRemis > 0) {
+    obsParts.push(
+      `${remisMotif} : ${montantRemis.toLocaleString("fr-FR")} FCFA`
+    );
+  }
 
   const op = await prisma.operation.create({
     data: {
       date: payDate,
       libelle: `Facture ${facture.numero} · tranche ${trancheN} · ${facture.client.nom}`,
       categorieId: catEntree.id,
-      entree: montant,
+      entree: montantEncaisse > 0 ? montantEncaisse : null,
       sortie: null,
       numeroPiece,
       modePaiement: modePaiement?.trim() || null,
       factureId,
       statutApprobation: "APPROUVE",
       validePar: guard.nom,
-      observations:
-        totauxApres.resteAPayer > 0
-          ? `Paiement partiel (tranche ${trancheN}) · Facture ${facture.numero} · reste ${totauxApres.resteAPayer.toLocaleString("fr-FR")} FCFA`
-          : `Paiement soldé (tranche ${trancheN}) · Facture ${facture.numero}`,
+      observations: obsParts.join(" · "),
       historique: false,
+      montantRemis,
+      remisMotif,
     },
   });
 
-  if (isCashMode(modePaiement)) {
+  if (montantEncaisse > 0 && isCashMode(modePaiement)) {
     await ensureCaisseMirrorFromJournal(op.id);
   }
 
@@ -970,7 +1000,12 @@ export async function enregistrerPaiementFacture(
     action: "UPDATE",
     entity: "Facture",
     entityId: factureId,
-    details: `Tranche ${trancheN} · ${montant.toLocaleString("fr-FR")} FCFA · ${facture.numero}`,
+    details:
+      `Tranche ${trancheN} · payé ${montantEncaisse.toLocaleString("fr-FR")} FCFA` +
+      (montantRemis > 0
+        ? ` · remis ${montantRemis.toLocaleString("fr-FR")} FCFA`
+        : "") +
+      ` · ${facture.numero}`,
   });
 
   revalidate();
@@ -978,11 +1013,93 @@ export async function enregistrerPaiementFacture(
   return { ok: true, operationId: op.id };
 }
 
+export async function supprimerPaiementFacture(
+  operationId: string
+): Promise<{ ok: true; factureId: string } | { ok: false; error: string }> {
+  const guard = await guardWrite();
+  if (isGuardError(guard)) return guard;
+
+  const op = await prisma.operation.findUnique({
+    where: { id: operationId },
+    include: {
+      facture: { include: { lignes: true } },
+      caisseMiroir: true,
+    },
+  });
+  if (!op?.factureId || !op.facture) {
+    return { ok: false, error: "Reçu / tranche introuvable." };
+  }
+
+  const facture = op.facture;
+  const montantEncaisse = op.entree ?? 0;
+  const montantRemis = op.montantRemis ?? 0;
+  const debit = montantEncaisse + montantRemis;
+  const nouveauPaye = Math.max(0, facture.montantPaye - debit);
+
+  const totauxApres = computeTotauxFacture(
+    facture.lignes,
+    facture.reliquat,
+    facture.tauxTVA,
+    nouveauPaye,
+    facture.remiseMontant,
+    facture.remisePourcent
+  );
+  const statut =
+    nouveauPaye <= 0
+      ? facture.statut === "PAYE" || facture.statut === "PARTIEL"
+        ? "FACTURE"
+        : facture.statut
+      : totauxApres.resteAPayer === 0
+        ? "PAYE"
+        : "PARTIEL";
+
+  const autresOps = await prisma.operation.findMany({
+    where: { factureId: facture.id, id: { not: op.id } },
+    orderBy: [{ date: "desc" }, { createdAt: "desc" }],
+    select: { id: true, date: true },
+  });
+
+  await prisma.$transaction(async (tx) => {
+    if (op.caisseMiroir) {
+      await tx.operationCaisse.delete({ where: { id: op.caisseMiroir.id } });
+    }
+    await tx.operation.delete({ where: { id: op.id } });
+    await tx.facture.update({
+      where: { id: facture.id },
+      data: {
+        montantPaye: nouveauPaye,
+        statut,
+        datePaiement: autresOps[0]?.date ?? null,
+        operationId:
+          facture.operationId === op.id
+            ? (autresOps[0]?.id ?? null)
+            : facture.operationId,
+      },
+    });
+  });
+
+  await logAudit({
+    userId: guard.id,
+    userNom: guard.nom,
+    action: "DELETE",
+    entity: "Operation",
+    entityId: op.id,
+    details: `Suppression tranche · Facture ${facture.numero} · ${debit.toLocaleString("fr-FR")} FCFA`,
+  });
+
+  revalidate();
+  revalidatePath(`/facturation/factures/${facture.id}`);
+  revalidatePath("/facturation/recus");
+  return { ok: true, factureId: facture.id };
+}
+
 export type PaiementTrancheRow = {
   id: string;
   tranche: number;
   date: string;
   montant: number;
+  montantRemis: number;
+  remisMotif: string | null;
   numeroPiece: string | null;
   modePaiement: string | null;
   libelle: string;
@@ -1000,6 +1117,8 @@ export async function listPaiementsFacture(
     tranche: i + 1,
     date: (op.date ?? op.createdAt).toISOString(),
     montant: op.entree ?? 0,
+    montantRemis: op.montantRemis ?? 0,
+    remisMotif: op.remisMotif,
     numeroPiece: op.numeroPiece,
     modePaiement: op.modePaiement,
     libelle: op.libelle,
@@ -1044,6 +1163,8 @@ export async function getRecuPaiement(operationId: string) {
     totalTranches: paiements.length,
     date: (op.date ?? op.createdAt).toISOString(),
     montant: op.entree ?? 0,
+    montantRemis: op.montantRemis ?? 0,
+    remisMotif: op.remisMotif,
     numeroPiece: op.numeroPiece,
     modePaiement: op.modePaiement,
     libelle: op.libelle,
@@ -1075,6 +1196,7 @@ export type RecuListRow = {
   totalTranches: number;
   date: string;
   montant: number;
+  montantRemis: number;
   numeroPiece: string | null;
   modePaiement: string | null;
   historique: boolean;
@@ -1089,7 +1211,7 @@ export async function listRecusPaiement(): Promise<RecuListRow[]> {
   const rows = await prisma.operation.findMany({
     where: {
       factureId: { not: null },
-      entree: { gt: 0 },
+      OR: [{ entree: { gt: 0 } }, { montantRemis: { gt: 0 } }],
     },
     include: {
       facture: {
@@ -1129,6 +1251,7 @@ export async function listRecusPaiement(): Promise<RecuListRow[]> {
       totalTranches: t.total,
       date: (op.date ?? op.createdAt).toISOString(),
       montant: op.entree ?? 0,
+      montantRemis: op.montantRemis ?? 0,
       numeroPiece: op.numeroPiece,
       modePaiement: op.modePaiement,
       historique: op.historique,
